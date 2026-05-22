@@ -1,0 +1,51 @@
+{
+  "name": "Potrero",
+  "type": "object",
+  "properties": {
+    "nombre": {
+      "type": "string"
+    },
+    "numero": {
+      "type": "string"
+    },
+    "estado": {
+      "type": "string",
+      "enum": [
+        "Disponible",
+        "Pastoreando",
+        "Descansando",
+        "Critico"
+      ]
+    },
+    "hectareas": {
+      "type": "number"
+    },
+    "tipo_pasto": {
+      "type": "string"
+    },
+    "capacidad_animales": {
+      "type": "number"
+    },
+    "animales_actuales": {
+      "type": "number"
+    },
+    "ultimo_uso": {
+      "type": "string",
+      "format": "date"
+    },
+    "proximo_uso": {
+      "type": "string",
+      "format": "date"
+    },
+    "dias_descanso": {
+      "type": "number"
+    },
+    "notas": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "nombre",
+    "estado"
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "name": "Configuracion",
+  "type": "object",
+  "properties": {
+    "nombre_finca": {
+      "type": "string"
+    },
+    "propietario": {
+      "type": "string"
+    },
+    "provincia": {
+      "type": "string"
+    },
+    "canton": {
+      "type": "string"
+    },
+    "telefono": {
+      "type": "string"
+    },
+    "precio_litro_usd": {
+      "type": "number",
+      "default": 0.42
+    },
+    "dias_gestacion": {
+      "type": "number",
+      "default": 280
+    },
+    "dias_sequia_antes_parto": {
+      "type": "number",
+      "default": 60
+    },
+    "dias_chequeo_post_inseminacion": {
+      "type": "number",
+      "default": 35
+    },
+    "dias_bloqueo_fertilizacion": {
+      "type": "number",
+      "default": 15
+    },
+    "meta_produccion_diaria": {
+      "type": "number"
+    },
+    "hectareas_totales": {
+      "type": "number"
+    },
+    "grupos_personalizados": {
+      "type": "string"
+    },
+    "logo_url": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "nombre_finca"
+  ]
+}

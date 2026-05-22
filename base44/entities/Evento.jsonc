@@ -1,0 +1,88 @@
+{
+  "name": "Evento",
+  "type": "object",
+  "properties": {
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "Produccion",
+        "Parto",
+        "Muerte",
+        "Venta",
+        "Enfermedad",
+        "Tratamiento",
+        "Inseminacion",
+        "Destete",
+        "Celo",
+        "Chequeo veterinario",
+        "Vacuna",
+        "Cambio de grupo",
+        "Otro"
+      ]
+    },
+    "animal_id": {
+      "type": "string"
+    },
+    "animal_nombre": {
+      "type": "string"
+    },
+    "fecha": {
+      "type": "string",
+      "format": "date"
+    },
+    "valor_litros": {
+      "type": "number"
+    },
+    "valor_usd": {
+      "type": "number"
+    },
+    "descripcion": {
+      "type": "string"
+    },
+    "veterinario": {
+      "type": "string"
+    },
+    "medicamento": {
+      "type": "string"
+    },
+    "dosis": {
+      "type": "string"
+    },
+    "resultado": {
+      "type": "string"
+    },
+    "sexo_cria": {
+      "type": "string",
+      "enum": [
+        "Macho",
+        "Hembra"
+      ]
+    },
+    "peso_cria": {
+      "type": "number"
+    },
+    "nombre_cria": {
+      "type": "string"
+    },
+    "requiere_retiro_leche": {
+      "type": "boolean",
+      "default": false
+    },
+    "dias_retiro": {
+      "type": "number"
+    },
+    "grupo_anterior": {
+      "type": "string"
+    },
+    "grupo_nuevo": {
+      "type": "string"
+    },
+    "notas": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "tipo",
+    "fecha"
+  ]
+}

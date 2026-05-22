@@ -1,0 +1,128 @@
+{
+  "name": "Animal",
+  "type": "object",
+  "properties": {
+    "nombre": {
+      "type": "string",
+      "description": "Nombre o ID del animal"
+    },
+    "numero_id": {
+      "type": "string",
+      "description": "N\u00famero de identificaci\u00f3n / Arete"
+    },
+    "raza": {
+      "type": "string",
+      "enum": [
+        "Holstein",
+        "Jersey",
+        "Brown Swiss",
+        "Montbeliarde",
+        "Mestiza",
+        "Otra"
+      ]
+    },
+    "fecha_nacimiento": {
+      "type": "string",
+      "format": "date"
+    },
+    "sexo": {
+      "type": "string",
+      "enum": [
+        "Hembra",
+        "Macho"
+      ]
+    },
+    "estado": {
+      "type": "string",
+      "enum": [
+        "Orde\u00f1o",
+        "Seca",
+        "Preparto",
+        "Ternera",
+        "Vacona",
+        "Enfermer\u00eda",
+        "Vendida",
+        "Muerta"
+      ]
+    },
+    "estado_reproductivo": {
+      "type": "string",
+      "enum": [
+        "Abierta",
+        "En celo",
+        "Inseminada",
+        "Pendiente chequeo",
+        "Pre\u00f1ada positiva",
+        "Negativa",
+        "Dudosa",
+        "Aborto"
+      ]
+    },
+    "grupo": {
+      "type": "string",
+      "description": "Grupo o lote actual"
+    },
+    "potrero_id": {
+      "type": "string"
+    },
+    "peso_kg": {
+      "type": "number"
+    },
+    "produccion_diaria_litros": {
+      "type": "number"
+    },
+    "produccion_am": {
+      "type": "number"
+    },
+    "produccion_pm": {
+      "type": "number"
+    },
+    "fecha_ultimo_parto": {
+      "type": "string",
+      "format": "date"
+    },
+    "fecha_proxima_cria": {
+      "type": "string",
+      "format": "date"
+    },
+    "fecha_secado": {
+      "type": "string",
+      "format": "date"
+    },
+    "fecha_proxima_inseminacion": {
+      "type": "string",
+      "format": "date"
+    },
+    "fecha_ultimo_chequeo": {
+      "type": "string",
+      "format": "date"
+    },
+    "fecha_proximo_chequeo": {
+      "type": "string",
+      "format": "date"
+    },
+    "retiro_leche_hasta": {
+      "type": "string",
+      "format": "date"
+    },
+    "madre_id": {
+      "type": "string"
+    },
+    "padre_nombre": {
+      "type": "string"
+    },
+    "racion_actual": {
+      "type": "string"
+    },
+    "notas": {
+      "type": "string"
+    },
+    "foto_url": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "nombre",
+    "estado"
+  ]
+}

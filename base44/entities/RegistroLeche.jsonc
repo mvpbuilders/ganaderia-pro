@@ -1,0 +1,36 @@
+{
+  "name": "RegistroLeche",
+  "type": "object",
+  "properties": {
+    "fecha": {
+      "type": "string",
+      "format": "date"
+    },
+    "animal_id": {
+      "type": "string"
+    },
+    "animal_nombre": {
+      "type": "string"
+    },
+    "litros_am": {
+      "type": "number"
+    },
+    "litros_pm": {
+      "type": "number"
+    },
+    "total_litros": {
+      "type": "number"
+    },
+    "en_retiro": {
+      "type": "boolean",
+      "default": false
+    },
+    "notas": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "fecha",
+    "animal_id"
+  ]
+}

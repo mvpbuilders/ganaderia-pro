@@ -1,0 +1,57 @@
+{
+  "name": "Transaccion",
+  "type": "object",
+  "properties": {
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "Ingreso",
+        "Egreso"
+      ]
+    },
+    "categoria": {
+      "type": "string",
+      "enum": [
+        "Venta de leche",
+        "Venta de animal",
+        "Alimentacion",
+        "Veterinario",
+        "Medicamentos",
+        "Mano de obra",
+        "Equipos",
+        "Combustible",
+        "Mantenimiento",
+        "Servicios",
+        "Otros"
+      ]
+    },
+    "monto_usd": {
+      "type": "number"
+    },
+    "fecha": {
+      "type": "string",
+      "format": "date"
+    },
+    "descripcion": {
+      "type": "string"
+    },
+    "litros": {
+      "type": "number"
+    },
+    "precio_por_litro": {
+      "type": "number"
+    },
+    "referencia": {
+      "type": "string"
+    },
+    "notas": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "tipo",
+    "categoria",
+    "monto_usd",
+    "fecha"
+  ]
+}

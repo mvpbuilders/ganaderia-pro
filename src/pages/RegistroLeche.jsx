@@ -1,0 +1,311 @@
+import { useState, useEffect } from "react";
+import { base44 } from "@/api/base44Client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ChevronLeft, ChevronRight, Save, Milk } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+
+function addDays(dateStr, n) {
+  const d = new Date(dateStr + "T12:00:00");
+  d.setDate(d.getDate() + n);
+  return d.toISOString().split("T")[0];
+}
+
+function formatDate(dateStr) {
+  return new Date(dateStr + "T12:00:00").toLocaleDateString("es-EC", {
+    weekday: "short", day: "numeric", month: "short"
+  });
+}
+
+export default function RegistroLeche() {
+  const queryClient = useQueryClient();
+  const today = new Date().toISOString().split("T")[0];
+  const [windowStart, setWindowStart] = useState(addDays(today, -4));
+  const [activeDate, setActiveDate] = useState(today);
+  const [edits, setEdits] = useState({});
+
+  // 5-day window
+  const dates = Array.from({ length: 5 }, (_, i) => addDays(windowStart, i));
+
+  const { data: animales = [] } = useQuery({
+    queryKey: ["animales"],
+    queryFn: () => base44.entities.Animal.list("-nombre", 500),
+  });
+
+  const vacasOrdenio = animales.filter(a => a.estado === "Ordeño");
+
+  const { data: registros = [] } = useQuery({
+    queryKey: ["registros-leche", windowStart],
+    queryFn: () => base44.entities.RegistroLeche.filter({}, "-fecha", 2000),
+  });
+
+  // Index records by fecha+animal_id
+  const recordMap = {};
+  registros.forEach(r => {
+    recordMap[`${r.fecha}__${r.animal_id}`] = r;
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async ({ animalId, animalNombre, fecha, litros_am, litros_pm }) => {
+      const total = (litros_am || 0) + (litros_pm || 0);
+      const existing = recordMap[`${fecha}__${animalId}`];
+      if (existing) {
+        return base44.entities.RegistroLeche.update(existing.id, {
+          litros_am, litros_pm, total_litros: total
+        });
+      } else {
+        return base44.entities.RegistroLeche.create({
+          fecha,
+          animal_id: animalId,
+          animal_nombre: animalNombre,
+          litros_am,
+          litros_pm,
+          total_litros: total,
+        });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["registros-leche"] });
+    },
+  });
+
+  const handleSaveAll = async () => {
+    const promises = Object.entries(edits).map(([key, vals]) => {
+      const [fecha, animalId] = key.split("__");
+      const animal = vacasOrdenio.find(a => a.id === animalId);
+      if (!animal) return null;
+      return saveMutation.mutateAsync({
+        animalId,
+        animalNombre: animal.nombre,
+        fecha,
+        litros_am: parseFloat(vals.am) || 0,
+        litros_pm: parseFloat(vals.pm) || 0,
+      });
+    }).filter(Boolean);
+    await Promise.all(promises);
+    setEdits({});
+    toast.success("Registros guardados correctamente");
+  };
+
+  const getVal = (fecha, animalId, field) => {
+    const key = `${fecha}__${animalId}`;
+    if (edits[key]?.[field] !== undefined) return edits[key][field];
+    const rec = recordMap[key];
+    if (rec) return field === "am" ? (rec.litros_am ?? "") : (rec.litros_pm ?? "");
+    return "";
+  };
+
+  const setVal = (fecha, animalId, field, value) => {
+    const key = `${fecha}__${animalId}`;
+    setEdits(prev => ({
+      ...prev,
+      [key]: { ...prev[key], [field]: value }
+    }));
+  };
+
+  // Daily totals
+  const dayTotals = dates.map(fecha => {
+    let am = 0, pm = 0;
+    vacasOrdenio.forEach(a => {
+      am += parseFloat(getVal(fecha, a.id, "am")) || 0;
+      pm += parseFloat(getVal(fecha, a.id, "pm")) || 0;
+    });
+    return { am, pm, total: am + pm };
+  });
+
+  const hasEdits = Object.keys(edits).length > 0;
+
+  return (
+    <div className="space-y-4 animate-fade-in">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <Milk className="w-6 h-6 text-primary" /> Registro Lechero
+          </h1>
+          <p className="text-muted-foreground text-sm">{vacasOrdenio.length} vacas en ordeño</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {hasEdits && (
+            <Button onClick={handleSaveAll} className="gap-2" disabled={saveMutation.isPending}>
+              <Save className="w-4 h-4" />
+              {saveMutation.isPending ? "Guardando..." : `Guardar (${Object.keys(edits).length})`}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Date Navigation */}
+      <div className="flex items-center gap-2 bg-card rounded-xl border border-border p-3">
+        <Button variant="outline" size="icon" onClick={() => setWindowStart(w => addDays(w, -1))}>
+          <ChevronLeft className="w-4 h-4" />
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => setWindowStart(w => addDays(w, -5))}>
+          ‹‹ 5 días
+        </Button>
+        <div className="flex-1 flex gap-1 justify-center">
+          {dates.map(fecha => (
+            <button
+              key={fecha}
+              onClick={() => setActiveDate(fecha)}
+              className={`flex-1 rounded-lg px-2 py-2 text-xs font-medium transition-all text-center ${
+                fecha === activeDate
+                  ? "bg-primary text-primary-foreground shadow"
+                  : fecha === today
+                  ? "bg-accent text-accent-foreground border border-primary/30"
+                  : "hover:bg-secondary text-muted-foreground"
+              }`}
+            >
+              <div className="hidden sm:block">{formatDate(fecha)}</div>
+              <div className="sm:hidden">{fecha.slice(5)}</div>
+            </button>
+          ))}
+        </div>
+        <Button variant="ghost" size="sm" onClick={() => setWindowStart(w => addDays(w, 5))}>
+          5 días ››
+        </Button>
+        <Button variant="outline" size="icon" onClick={() => setWindowStart(w => addDays(w, 1))}>
+          <ChevronRight className="w-4 h-4" />
+        </Button>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-5 gap-2">
+        {dates.map((fecha, i) => (
+          <div key={fecha} className={`rounded-xl border p-3 text-center transition-all ${
+            fecha === activeDate ? "border-primary bg-accent" : "border-border bg-card"
+          }`}>
+            <p className="text-xs text-muted-foreground mb-1 hidden sm:block">{formatDate(fecha)}</p>
+            <p className="text-xs text-muted-foreground mb-1 sm:hidden">{fecha.slice(5)}</p>
+            <p className="text-lg font-bold text-foreground">{dayTotals[i].total.toFixed(0)}L</p>
+            <p className="text-xs text-muted-foreground">AM {dayTotals[i].am.toFixed(0)} / PM {dayTotals[i].pm.toFixed(0)}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Table */}
+      {vacasOrdenio.length === 0 ? (
+        <div className="bg-card rounded-xl border border-border p-12 text-center text-muted-foreground">
+          <Milk className="w-12 h-12 mx-auto mb-3 opacity-30" />
+          <p>No hay vacas en estado "Ordeño".</p>
+          <p className="text-sm mt-1">Cambia el estado de las vacas en el módulo de Ganado.</p>
+        </div>
+      ) : (
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-secondary/50">
+                  <th className="text-left px-4 py-3 font-semibold text-foreground sticky left-0 bg-secondary/50 min-w-[140px]">Vaca</th>
+                  {dates.map(fecha => (
+                    <th key={fecha} colSpan={2} className={`text-center px-2 py-3 font-semibold min-w-[120px] ${
+                      fecha === activeDate ? "bg-accent text-accent-foreground" : "text-muted-foreground"
+                    }`}>
+                      <div className="hidden sm:block text-xs">{formatDate(fecha)}</div>
+                      <div className="sm:hidden text-xs">{fecha.slice(5)}</div>
+                    </th>
+                  ))}
+                  <th className="text-center px-3 py-3 font-semibold text-muted-foreground min-w-[60px]">Prom.</th>
+                </tr>
+                <tr className="border-b border-border text-xs text-muted-foreground bg-secondary/20">
+                  <th className="sticky left-0 bg-secondary/20 px-4 py-1"></th>
+                  {dates.map(fecha => (
+                    <>
+                      <th key={`${fecha}-am`} className={`text-center py-1 px-1 ${fecha === activeDate ? "bg-accent/50" : ""}`}>AM</th>
+                      <th key={`${fecha}-pm`} className={`text-center py-1 px-1 ${fecha === activeDate ? "bg-accent/50" : ""}`}>PM</th>
+                    </>
+                  ))}
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {vacasOrdenio.map((animal, idx) => {
+                  // Calculate 5-day avg for this animal
+                  let sumDays = 0, countDays = 0;
+                  dates.forEach(fecha => {
+                    const am = parseFloat(getVal(fecha, animal.id, "am")) || 0;
+                    const pm = parseFloat(getVal(fecha, animal.id, "pm")) || 0;
+                    if (am > 0 || pm > 0) { sumDays += am + pm; countDays++; }
+                  });
+                  const avg = countDays > 0 ? (sumDays / countDays).toFixed(1) : "—";
+
+                  return (
+                    <tr key={animal.id} className={`border-b border-border last:border-0 ${idx % 2 === 0 ? "bg-white" : "bg-secondary/10"} hover:bg-accent/20 transition-colors`}>
+                      <td className={`px-4 py-2 font-medium text-foreground sticky left-0 ${idx % 2 === 0 ? "bg-white" : "bg-secondary/10"}`}>
+                        <div className="truncate max-w-[130px]">{animal.nombre}</div>
+                        {animal.numero_id && <div className="text-xs text-muted-foreground">#{animal.numero_id}</div>}
+                      </td>
+                      {dates.map(fecha => {
+                        const isActive = fecha === activeDate;
+                        const am = getVal(fecha, animal.id, "am");
+                        const pm = getVal(fecha, animal.id, "pm");
+                        return (
+                          <>
+                            <td key={`${fecha}-am`} className={`px-1 py-1.5 text-center ${isActive ? "bg-accent/30" : ""}`}>
+                              {isActive ? (
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="0.1"
+                                  value={am}
+                                  onChange={e => setVal(fecha, animal.id, "am", e.target.value)}
+                                  className="w-16 h-7 text-center text-xs px-1"
+                                  placeholder="0"
+                                />
+                              ) : (
+                                <span className={`text-xs ${am === "" ? "text-muted-foreground" : "text-foreground font-medium"}`}>
+                                  {am === "" ? "—" : `${am}L`}
+                                </span>
+                              )}
+                            </td>
+                            <td key={`${fecha}-pm`} className={`px-1 py-1.5 text-center ${isActive ? "bg-accent/30" : ""}`}>
+                              {isActive ? (
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="0.1"
+                                  value={pm}
+                                  onChange={e => setVal(fecha, animal.id, "pm", e.target.value)}
+                                  className="w-16 h-7 text-center text-xs px-1"
+                                  placeholder="0"
+                                />
+                              ) : (
+                                <span className={`text-xs ${pm === "" ? "text-muted-foreground" : "text-foreground font-medium"}`}>
+                                  {pm === "" ? "—" : `${pm}L`}
+                                </span>
+                              )}
+                            </td>
+                          </>
+                        );
+                      })}
+                      <td className="px-3 py-2 text-center text-xs font-semibold text-primary">{avg}{avg !== "—" ? "L" : ""}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-border bg-secondary/50 font-semibold">
+                  <td className="px-4 py-3 text-sm sticky left-0 bg-secondary/50">Totales</td>
+                  {dates.map((fecha, i) => (
+                    <>
+                      <td key={`${fecha}-am-total`} className={`text-center px-1 py-3 text-xs ${fecha === activeDate ? "bg-accent/50" : ""}`}>
+                        {dayTotals[i].am.toFixed(1)}L
+                      </td>
+                      <td key={`${fecha}-pm-total`} className={`text-center px-1 py-3 text-xs ${fecha === activeDate ? "bg-accent/50" : ""}`}>
+                        {dayTotals[i].pm.toFixed(1)}L
+                      </td>
+                    </>
+                  ))}
+                  <td className="text-center px-3 py-3 text-xs text-primary">
+                    {(dates.reduce((s, _, i) => s + dayTotals[i].total, 0) / dates.length).toFixed(1)}L
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
