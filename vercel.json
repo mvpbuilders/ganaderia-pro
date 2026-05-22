@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://ganaderia-pro-flujo.base44.app/api/:path*"
+    },
+    {
+      "source": "/prod/:path*",
+      "destination": "https://ganaderia-pro-flujo.base44.app/prod/:path*"
+    },
+    {
+      "source": "/:path*",
+      "destination": "/index.html"
+    }
+  ]
+}
