@@ -10,7 +10,7 @@ const RAZAS = ["Holstein", "Jersey", "Brown Swiss", "Montbeliarde", "Mestiza", "
 const ESTADOS = ["Ordeño", "Seca", "Preparto", "Ternera", "Vacona", "Enfermería", "Vendida", "Muerta"];
 const ESTADOS_REPRO = ["Abierta", "En celo", "Inseminada", "Pendiente chequeo", "Preñada positiva", "Negativa", "Dudosa", "Aborto"];
 
-export default function AnimalModal({ animal, onClose, onSave }) {
+export default function AnimalModal({ animal, fincaId, onClose, onSave }) {
   const [form, setForm] = useState(animal ? {
     ...animal,
     raza: animal.raza || "Holstein",
@@ -35,10 +35,15 @@ export default function AnimalModal({ animal, onClose, onSave }) {
     const pm = form.produccion_pm ? Number(form.produccion_pm) : undefined;
     const data = {
       ...form,
+      finca_id: fincaId,
       peso_kg: form.peso_kg ? Number(form.peso_kg) : undefined,
       produccion_am: am,
       produccion_pm: pm,
-      produccion_diaria_litros: (am || 0) + (pm || 0) || (form.produccion_diaria_litros ? Number(form.produccion_diaria_litros) : undefined),
+      produccion_diaria_litros:
+        (am || 0) + (pm || 0) ||
+        (form.produccion_diaria_litros
+          ? Number(form.produccion_diaria_litros)
+          : undefined),
     };
     if (animal?.id) await base44.entities.Animal.update(animal.id, data);
     else await base44.entities.Animal.create(data);

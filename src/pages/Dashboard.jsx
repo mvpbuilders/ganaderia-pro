@@ -1,3 +1,4 @@
+import { getCurrentFinca } from "@/lib/current-finca";
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Link } from "react-router-dom";
@@ -15,24 +16,35 @@ export default function Dashboard() {
   const [showAlertas, setShowAlertas] = useState(false);
   const [diaDetalle, setDiaDetalle] = useState(null);
 
-  const { data: animales = [] } = useQuery({
-    queryKey: ['animales'],
-    queryFn: () => base44.entities.Animal.list('-created_date', 500),
+  const { data: fincaData } = useQuery({
+    queryKey: ['current-finca'],
+    queryFn: getCurrentFinca,
+  });
+
+  const fincaId = fincaData?.finca?.id;
+
+  const { data: animales = [], isLoading } = useQuery({
+    queryKey: ['animales', fincaId],
+    enabled: !!fincaId,
+    queryFn: () => base44.entities.Animal.filter({ finca_id: fincaId }, '-created_date', 500),
   });
 
   const { data: transacciones = [] } = useQuery({
-    queryKey: ['transacciones'],
-    queryFn: () => base44.entities.Transaccion.list('-fecha', 500),
+    queryKey: ['transacciones', fincaId],
+    enabled: !!fincaId,
+    queryFn: () => base44.entities.Transaccion.filter({ finca_id: fincaId }, '-fecha', 500),
   });
 
   const { data: eventos = [] } = useQuery({
-    queryKey: ['eventos'],
-    queryFn: () => base44.entities.Evento.list('-fecha', 100),
+    queryKey: ['eventos', fincaId],
+    enabled: !!fincaId,
+    queryFn: () => base44.entities.Evento.filter({ finca_id: fincaId }, '-fecha', 100),
   });
 
   const { data: registrosLeche = [] } = useQuery({
-    queryKey: ['leche-reciente'],
-    queryFn: () => base44.entities.RegistroLeche.list('-fecha', 200),
+    queryKey: ['leche-reciente', fincaId],
+    enabled: !!fincaId,
+    queryFn: () => base44.entities.RegistroLeche.filter({ finca_id: fincaId }, '-fecha', 200),
   });
 
   const hoy = new Date().toISOString().split('T')[0];

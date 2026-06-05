@@ -1,3 +1,4 @@
+import { getCurrentFinca } from "@/lib/current-finca";
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -5,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { generateRegistroLeche, generateEventos, generateTransacciones } from "@/lib/generateCleanData";
 
@@ -13,18 +14,59 @@ export default function Configuracion() {
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState({});
   const [isLoadingSeed, setIsLoadingSeed] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("worker");
+  const { data: fincaData } = useQuery({
+    queryKey: ["current-finca"],
+    queryFn: getCurrentFinca,
+  });
+
+  const fincaId = fincaData?.finca?.id;
+  const currentRole = fincaData?.relacion?.role;
+  const canManageUsers = ["owner", "admin"].includes(currentRole);
 
   const { data: config } = useQuery({
-    queryKey: ["configuracion"],
+    queryKey: ["configuracion", fincaId],
+    enabled: !!fincaId,
     queryFn: async () => {
-      const items = await base44.entities.Configuracion.list();
+      const items = await base44.entities.Configuracion.filter({
+        finca_id: fincaId,
+      });
+
+  const handleInviteUser = async () => {
+    if (!inviteEmail || !fincaId) return;
+
+    const existing = await base44.entities.FincaUsuario.filter({
+      finca_id: fincaId,
+      email: inviteEmail.trim().toLowerCase(),
+    });
+
+    if (existing.length > 0) {
+      toast.error("Ese usuario ya está invitado a esta finca");
+      return;
+    }
+
+    await base44.entities.FincaUsuario.create({
+      finca_id: fincaId,
+      email: inviteEmail.trim().toLowerCase(),
+      role: inviteRole,
+    });
+
+    setInviteEmail("");
+    setInviteRole("worker");
+    toast.success("Usuario invitado correctamente");
+  };
       return items[0] || {};
     },
   });
 
   const { data: animalesOrdenio = [] } = useQuery({
     queryKey: ["animales-ordenio"],
-    queryFn: () => base44.entities.Animal.filter({ estado: "Ordeño" }),
+    queryFn: () =>
+    base44.entities.Animal.filter({
+      estado: "Ordeño",
+      finca_id: fincaId,
+    }),
   });
 
   const saveMutation = useMutation({
@@ -32,7 +74,10 @@ export default function Configuracion() {
       if (config.id) {
         return base44.entities.Configuracion.update(config.id, data);
       } else {
-        return base44.entities.Configuracion.create(data);
+        return base44.entities.Configuracion.create({
+          ...data,
+          finca_id: fincaId,
+        });
       }
     },
     onSuccess: () => {
@@ -71,10 +116,25 @@ export default function Configuracion() {
       const eventos = generateEventos(animalIds, animalNames);
       const transacciones = generateTransacciones();
 
+      const registroLecheConFinca = registroLeche.map(item => ({
+        ...item,
+        finca_id: fincaId,
+      }));
+
+      const eventosConFinca = eventos.map(item => ({
+        ...item,
+        finca_id: fincaId,
+      }));
+
+      const transaccionesConFinca = transacciones.map(item => ({
+        ...item,
+        finca_id: fincaId,
+      }));
+
       // Bulk insert
-      await base44.entities.RegistroLeche.bulkCreate(registroLeche);
-      await base44.entities.Evento.bulkCreate(eventos);
-      await base44.entities.Transaccion.bulkCreate(transacciones);
+      await base44.entities.RegistroLeche.bulkCreate(registroLecheConFinca);
+      await base44.entities.Evento.bulkCreate(eventosConFinca);
+      await base44.entities.Transaccion.bulkCreate(transaccionesConFinca);
 
       // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ["registros-leche"] });
@@ -90,6 +150,30 @@ export default function Configuracion() {
     } finally {
       setIsLoadingSeed(false);
     }
+  };
+
+  const handleInviteUser = async () => {
+    if (!inviteEmail || !fincaId) return;
+
+    const existing = await base44.entities.FincaUsuario.filter({
+      finca_id: fincaId,
+      email: inviteEmail.trim().toLowerCase(),
+    });
+
+    if (existing.length > 0) {
+      toast.error("Ese usuario ya está invitado a esta finca");
+      return;
+    }
+
+    await base44.entities.FincaUsuario.create({
+      finca_id: fincaId,
+      email: inviteEmail.trim().toLowerCase(),
+      role: inviteRole,
+    });
+
+    setInviteEmail("");
+    setInviteRole("worker");
+    toast.success("Usuario invitado correctamente");
   };
 
   return (
@@ -202,6 +286,53 @@ export default function Configuracion() {
           </div>
         </div>
       </Card>
+      {canManageUsers && (
+      <Card className="p-6 border border-border">
+        <div className="space-y-4">
+          <div>
+            <h2 className="font-semibold text-foreground flex items-center gap-2">
+              <UserPlus className="w-5 h-5 text-primary" />
+              Usuarios de la finca
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Invitá personas para que accedan a esta misma finca.
+            </p>
+          </div>
+
+          <div>
+            <Label>Email</Label>
+            <Input
+              type="email"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              placeholder="empleado@email.com"
+            />
+          </div>
+
+          <div>
+            <Label>Rol</Label>
+            <select
+              value={inviteRole}
+              onChange={(e) => setInviteRole(e.target.value)}
+              className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value="worker">Empleado</option>
+              <option value="admin">Administrador</option>
+              <option value="owner">Owner</option>
+            </select>
+          </div>
+
+          <Button
+            onClick={handleInviteUser}
+            disabled={!inviteEmail || !fincaId}
+            className="gap-2"
+          >
+            <UserPlus className="w-4 h-4" />
+            Invitar usuario
+          </Button>
+        </div>
+      </Card>
+      )}
 
       <Card className="p-6 border border-border bg-accent/5">
         <div className="space-y-3">
@@ -210,11 +341,11 @@ export default function Configuracion() {
             Generar Datos Históricos (Marzo–Mayo 2026)
           </h2>
           <p className="text-sm text-muted-foreground">
-            Crea registros de producción lechera, eventos (reproducción, salud) y transacciones financieras para los últimos 3 meses. 
+            Crea registros de producción lechera, eventos (reproducción, salud) y transacciones financieras para los últimos 3 meses.
             Esto poblará dashboards, reportes y gráficos con datos reales.
           </p>
           <p className="text-sm text-foreground font-medium">
-            {animalesOrdenio.length > 0 
+            {animalesOrdenio.length > 0
               ? `✓ ${animalesOrdenio.length} vacas en Ordeño listas`
               : "⚠️ Se necesitan animales en estado 'Ordeño'"}
           </p>

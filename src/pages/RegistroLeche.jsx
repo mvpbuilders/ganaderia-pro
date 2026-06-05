@@ -1,3 +1,4 @@
+import { getCurrentFinca } from "@/lib/current-finca";
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -21,6 +22,12 @@ function formatDate(dateStr) {
 export default function RegistroLeche() {
   const queryClient = useQueryClient();
   const today = new Date().toISOString().split("T")[0];
+  const { data: fincaData } = useQuery({
+    queryKey: ["current-finca"],
+    queryFn: getCurrentFinca,
+  });
+
+  const fincaId = fincaData?.finca?.id;
   const [windowStart, setWindowStart] = useState(addDays(today, -4));
   const [activeDate, setActiveDate] = useState(today);
   const [edits, setEdits] = useState({});
@@ -29,15 +36,27 @@ export default function RegistroLeche() {
   const dates = Array.from({ length: 5 }, (_, i) => addDays(windowStart, i));
 
   const { data: animales = [] } = useQuery({
-    queryKey: ["animales"],
-    queryFn: () => base44.entities.Animal.list("-nombre", 500),
+    queryKey: ["animales", fincaId],
+    enabled: !!fincaId,
+    queryFn: () =>
+      base44.entities.Animal.filter(
+        { finca_id: fincaId },
+        "-nombre",
+        500
+      ),
   });
 
   const vacasOrdenio = animales.filter(a => a.estado === "Ordeño");
 
   const { data: registros = [] } = useQuery({
-    queryKey: ["registros-leche", windowStart],
-    queryFn: () => base44.entities.RegistroLeche.filter({}, "-fecha", 2000),
+    queryKey: ["registros-leche", fincaId, windowStart],
+    enabled: !!fincaId,
+    queryFn: () =>
+      base44.entities.RegistroLeche.filter(
+        { finca_id: fincaId },
+        "-fecha",
+        2000
+      ),
   });
 
   // Index records by fecha+animal_id
@@ -48,14 +67,21 @@ export default function RegistroLeche() {
 
   const saveMutation = useMutation({
     mutationFn: async ({ animalId, animalNombre, fecha, litros_am, litros_pm }) => {
-      const total = (litros_am || 0) + (litros_pm || 0);
+      const total = (litros_am ?? 0) + (litros_pm ?? 0);
       const existing = recordMap[`${fecha}__${animalId}`];
       if (existing) {
+        const nuevoAm = litros_am ?? existing.litros_am ?? 0;
+        const nuevoPm = litros_pm ?? existing.litros_pm ?? 0;
+
         return base44.entities.RegistroLeche.update(existing.id, {
-          litros_am, litros_pm, total_litros: total
+          finca_id: fincaId,
+          litros_am: nuevoAm,
+          litros_pm: nuevoPm,
+          total_litros: nuevoAm + nuevoPm,
         });
       } else {
         return base44.entities.RegistroLeche.create({
+          finca_id: fincaId,
           fecha,
           animal_id: animalId,
           animal_nombre: animalNombre,
@@ -79,8 +105,8 @@ export default function RegistroLeche() {
         animalId,
         animalNombre: animal.nombre,
         fecha,
-        litros_am: parseFloat(vals.am) || 0,
-        litros_pm: parseFloat(vals.pm) || 0,
+        litros_am: vals.am !== undefined ? parseFloat(vals.am) || 0 : undefined,
+        litros_pm: vals.pm !== undefined ? parseFloat(vals.pm) || 0 : undefined,
       });
     }).filter(Boolean);
     await Promise.all(promises);

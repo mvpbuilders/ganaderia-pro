@@ -6,15 +6,28 @@ import { Plus, Edit, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import EstadoBadge from "@/components/shared/EstadoBadge";
 import PotreroModal from "@/components/potreros/PotreroModal";
+import { getCurrentFinca } from "@/lib/current-finca";
 
 export default function Potreros() {
   const [showModal, setShowModal] = useState(false);
   const [editando, setEditando] = useState(null);
   const queryClient = useQueryClient();
+  const { data: fincaData } = useQuery({
+    queryKey: ['current-finca'],
+    queryFn: getCurrentFinca,
+  });
+
+  const fincaId = fincaData?.finca?.id;
 
   const { data: potreros = [], isLoading } = useQuery({
-    queryKey: ['potreros'],
-    queryFn: () => base44.entities.Potrero.list('-created_date', 100),
+    queryKey: ['potreros', fincaId],
+    enabled: !!fincaId,
+    queryFn: () =>
+      base44.entities.Potrero.filter(
+        { finca_id: fincaId },
+        '-created_date',
+        100
+      ),
   });
 
   const estadoColors = {
@@ -145,8 +158,9 @@ export default function Potreros() {
       {showModal && (
         <PotreroModal
           potrero={editando}
+          fincaId={fincaId}
           onClose={() => { setShowModal(false); setEditando(null); }}
-          onSave={() => { queryClient.invalidateQueries(['potreros']); setShowModal(false); }}
+          onSave={() => { queryClient.invalidateQueries(['potreros', fincaId]); setShowModal(false); }}
         />
       )}
     </div>

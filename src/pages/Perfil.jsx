@@ -1,3 +1,4 @@
+import { getCurrentFinca } from "@/lib/current-finca";
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -15,9 +16,17 @@ export default function Perfil() {
     queryFn: () => base44.auth.me(),
   });
 
+  const { data: fincaData } = useQuery({
+    queryKey: ['current-finca'],
+    queryFn: getCurrentFinca,
+  });
+
+  const fincaId = fincaData?.finca?.id;
+
   const { data: configs = [] } = useQuery({
-    queryKey: ['configuracion'],
-    queryFn: () => base44.entities.Configuracion.list(),
+    queryKey: ['configuracion', fincaId],
+    enabled: !!fincaId,
+    queryFn: () => base44.entities.Configuracion.filter({ finca_id: fincaId }),
   });
 
   const config = configs[0] || {};

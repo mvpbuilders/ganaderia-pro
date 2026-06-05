@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { getCurrentFinca } from "@/lib/current-finca";
 
 const TIPOS = ["Produccion", "Parto", "Muerte", "Venta", "Enfermedad", "Tratamiento", "Inseminacion", "Celo", "Chequeo veterinario", "Vacuna", "Destete", "Cambio de grupo", "Otro"];
 
@@ -33,15 +34,23 @@ export default function Eventos() {
     resultado: "", grupo_nuevo: "",
   });
   const set = (f, v) => setForm(p => ({ ...p, [f]: v }));
+  const { data: fincaData } = useQuery({
+    queryKey: ['current-finca'],
+    queryFn: getCurrentFinca,
+  });
+
+  const fincaId = fincaData?.finca?.id;
 
   const { data: animales = [] } = useQuery({
-    queryKey: ['animales'],
-    queryFn: () => base44.entities.Animal.list('-nombre', 500),
+    queryKey: ['animales', fincaId],
+    enabled: !!fincaId,
+    queryFn: () => base44.entities.Animal.filter({ finca_id: fincaId }, '-nombre', 500),
   });
 
   const { data: eventos = [] } = useQuery({
-    queryKey: ['eventos'],
-    queryFn: () => base44.entities.Evento.list('-fecha', 50),
+    queryKey: ['eventos', fincaId],
+    enabled: !!fincaId,
+    queryFn: () => base44.entities.Evento.filter({ finca_id: fincaId }, '-fecha', 50),
   });
 
   const animalSeleccionado = animales.find(a => a.nombre === form.animal_nombre);
@@ -49,9 +58,12 @@ export default function Eventos() {
   const handleSave = async () => {
     setLoading(true);
     const eventoData = {
-      tipo: form.tipo, animal_nombre: form.animal_nombre || null,
+      finca_id: fincaId,
+      tipo: form.tipo,
+      animal_nombre: form.animal_nombre || null,
       animal_id: animalSeleccionado?.id || null,
-      fecha: form.fecha, notas: form.notas,
+      fecha: form.fecha,
+      notas: form.notas,
       descripcion: form.descripcion,
       valor_litros: form.valor_litros ? Number(form.valor_litros) : undefined,
       valor_usd: form.valor_usd ? Number(form.valor_usd) : undefined,

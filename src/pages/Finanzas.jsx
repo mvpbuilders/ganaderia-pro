@@ -1,3 +1,4 @@
+import { getCurrentFinca } from "@/lib/current-finca";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -26,10 +27,22 @@ export default function Finanzas() {
   const [tipoFiltro, setTipoFiltro] = useState("Todos");
   const queryClient = useQueryClient();
   const now = new Date();
+  const { data: fincaData } = useQuery({
+    queryKey: ['current-finca'],
+    queryFn: getCurrentFinca,
+  });
+
+  const fincaId = fincaData?.finca?.id;
 
   const { data: transacciones = [], isLoading } = useQuery({
-    queryKey: ['transacciones'],
-    queryFn: () => base44.entities.Transaccion.list('-fecha', 500),
+    queryKey: ['transacciones', fincaId],
+    enabled: !!fincaId,
+    queryFn: () =>
+      base44.entities.Transaccion.filter(
+        { finca_id: fincaId },
+        '-fecha',
+        500
+      ),
   });
 
   const currentMonth = now.getMonth();
@@ -199,8 +212,12 @@ export default function Finanzas() {
 
       {showModal && (
         <TransaccionModal
+          fincaId={fincaId}
           onClose={() => setShowModal(false)}
-          onSave={() => { queryClient.invalidateQueries(['transacciones']); setShowModal(false); }}
+          onSave={() => {
+            queryClient.invalidateQueries(['transacciones', fincaId]);
+            setShowModal(false);
+          }}
         />
       )}
     </div>

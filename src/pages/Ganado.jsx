@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import AnimalModal from "@/components/ganado/AnimalModal";
 import AnimalDetalle from "@/components/ganado/AnimalDetalle";
+import { getCurrentFinca } from "@/lib/current-finca";
 
 const FILTROS = [
   { key: "Todos", label: "Todos" },
@@ -31,9 +32,17 @@ export default function Ganado() {
   const queryClient = useQueryClient();
   const hoy = new Date().toISOString().split('T')[0];
 
+  const { data: fincaData } = useQuery({
+    queryKey: ['current-finca'],
+    queryFn: getCurrentFinca,
+  });
+
+  const fincaId = fincaData?.finca?.id;
+
   const { data: animales = [], isLoading } = useQuery({
-    queryKey: ['animales'],
-    queryFn: () => base44.entities.Animal.list('-created_date', 500),
+    queryKey: ['animales', fincaId],
+    enabled: !!fincaId,
+    queryFn: () => base44.entities.Animal.filter({ finca_id: fincaId }, '-created_date', 500),
   });
 
   const handleSave = () => {
@@ -234,7 +243,8 @@ export default function Ganado() {
       {showModal && (
         <AnimalModal
           animal={animalEditar}
-          onClose={() => { setShowModal(false); setAnimalEditar(null); }}
+          fincaId={fincaId}
+          onClose={() => setShowModal(false)}
           onSave={handleSave}
         />
       )}

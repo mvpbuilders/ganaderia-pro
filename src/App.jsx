@@ -1,3 +1,7 @@
+import { useState, useEffect } from "react";
+import { base44 } from "@/api/base44Client";
+import Onboarding from "./pages/Onboarding";
+import CurrentUser from './pages/CurrentUser';
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -19,9 +23,28 @@ import Configuracion from './pages/Configuracion';
 import Perfil from './pages/Perfil';
 import Eventos from './pages/Eventos';
 import RegistroLeche from './pages/RegistroLeche.jsx';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import VerifyOtp from './pages/VerifyOtp';
+
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings, authError } = useAuth();
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+
+  useEffect(() => {
+    const checkFinca = async () => {
+      const user = await base44.auth.me();
+
+      const relaciones = await base44.entities.FincaUsuario.filter({
+        email: user.email
+      });
+
+      setNeedsOnboarding(relaciones.length === 0);
+    };
+
+    checkFinca();
+  }, []);
 
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
@@ -41,11 +64,14 @@ const AuthenticatedApp = () => {
     if (authError.type === 'user_not_registered') {
       return <UserNotRegisteredError />;
     } else if (authError.type === 'auth_required') {
-      navigateToLogin();
+      window.location.href = "/login";
       return null;
     }
   }
 
+  if (needsOnboarding) {
+    return <Onboarding />;
+  }
   return (
     <Routes>
       <Route element={<AppLayout />}>
@@ -67,15 +93,28 @@ const AuthenticatedApp = () => {
 
 function App() {
   return (
-    <AuthProvider>
-      <QueryClientProvider client={queryClientInstance}>
-        <Router>
-          <AuthenticatedApp />
-        </Router>
-        <Toaster />
-        <SonnerToaster position="top-right" richColors />
-      </QueryClientProvider>
-    </AuthProvider>
+    <QueryClientProvider client={queryClientInstance}>
+      <Router>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/verify-otp" element={<VerifyOtp />} />
+          <Route path="/current-user" element={<CurrentUser />} />
+
+          <Route
+            path="/*"
+            element={
+              <AuthProvider>
+                <AuthenticatedApp />
+              </AuthProvider>
+            }
+          />
+        </Routes>
+      </Router>
+
+      <Toaster />
+      <SonnerToaster position="top-right" richColors />
+    </QueryClientProvider>
   )
 }
 

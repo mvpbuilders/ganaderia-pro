@@ -1,3 +1,4 @@
+import { getCurrentFinca } from "@/lib/current-finca";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { X, AlertTriangle, CheckCircle2, Info, Bell } from "lucide-react";
@@ -10,13 +11,32 @@ const CONFIG_ICONS = {
 };
 
 export default function AlertasPanel({ onClose }) {
-  const { data: animales = [] } = useQuery({
-    queryKey: ['animales'],
-    queryFn: () => base44.entities.Animal.list('-created_date', 500),
+  const { data: fincaData } = useQuery({
+    queryKey: ['current-finca'],
+    queryFn: getCurrentFinca,
   });
+
+  const fincaId = fincaData?.finca?.id;
+  const { data: animales = [] } = useQuery({
+    queryKey: ['animales', fincaId],
+    enabled: !!fincaId,
+    queryFn: () =>
+      base44.entities.Animal.filter(
+        { finca_id: fincaId },
+        '-created_date',
+        500
+      ),
+  });
+
   const { data: transacciones = [] } = useQuery({
-    queryKey: ['transacciones'],
-    queryFn: () => base44.entities.Transaccion.list('-fecha', 200),
+    queryKey: ['transacciones', fincaId],
+    enabled: !!fincaId,
+    queryFn: () =>
+      base44.entities.Transaccion.filter(
+        { finca_id: fincaId },
+        '-fecha',
+        200
+      ),
   });
 
   const hoy = new Date();

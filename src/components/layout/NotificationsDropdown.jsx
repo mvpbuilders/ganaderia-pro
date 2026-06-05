@@ -1,3 +1,4 @@
+import { getCurrentFinca } from "@/lib/current-finca";
 import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -13,9 +14,34 @@ const typeConfig = {
 
 export default function NotificationsDropdown({ onClose }) {
   const ref = useRef(null);
+  const { data: fincaData } = useQuery({
+    queryKey: ['current-finca'],
+    queryFn: getCurrentFinca,
+  });
 
-  const { data: animales = [] } = useQuery({ queryKey: ['animales'], queryFn: () => base44.entities.Animal.list('-created_date', 500) });
-  const { data: transacciones = [] } = useQuery({ queryKey: ['transacciones'], queryFn: () => base44.entities.Transaccion.list('-fecha', 200) });
+  const fincaId = fincaData?.finca?.id;
+
+  const { data: animales = [] } = useQuery({
+    queryKey: ['animales', fincaId],
+    enabled: !!fincaId,
+    queryFn: () =>
+      base44.entities.Animal.filter(
+        { finca_id: fincaId },
+        '-created_date',
+        500
+      ),
+  });
+
+  const { data: transacciones = [] } = useQuery({
+    queryKey: ['transacciones', fincaId],
+    enabled: !!fincaId,
+    queryFn: () =>
+      base44.entities.Transaccion.filter(
+        { finca_id: fincaId },
+        '-fecha',
+        200
+      ),
+  });
 
   useEffect(() => {
     function handleClick(e) {

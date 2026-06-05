@@ -8,7 +8,7 @@ import { X } from "lucide-react";
 
 const ESTADOS = ["Disponible", "Pastoreando", "Descansando", "Critico"];
 
-export default function PotreroModal({ potrero, onClose, onSave }) {
+export default function PotreroModal({ potrero, fincaId, onClose, onSave }) {
   const [form, setForm] = useState(potrero ? {
     ...potrero,
     estado: potrero.estado || "Disponible",
@@ -24,6 +24,7 @@ export default function PotreroModal({ potrero, onClose, onSave }) {
     setLoading(true);
     const data = {
       ...form,
+      finca_id: fincaId,
       hectareas: form.hectareas ? Number(form.hectareas) : undefined,
       capacidad_animales: form.capacidad_animales ? Number(form.capacidad_animales) : undefined,
       animales_actuales: form.animales_actuales ? Number(form.animales_actuales) : undefined,
