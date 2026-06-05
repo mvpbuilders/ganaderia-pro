@@ -1,4 +1,5 @@
 import { getCurrentFinca } from "@/lib/current-finca";
+import { useAuth } from "@/lib/AuthContext";
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -10,12 +11,7 @@ import { toast } from "sonner";
 
 export default function Perfil() {
   const [saving, setSaving] = useState(false);
-
-  const { data: user } = useQuery({
-    queryKey: ['me'],
-    queryFn: () => base44.auth.me(),
-  });
-
+  const { user } = useAuth();
 
   const { data: fincaData } = useQuery({
     queryKey: ['current-finca'],
