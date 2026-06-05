@@ -17,10 +17,6 @@ export default function Login() {
 
     try {
       const loginResult = await base44.auth.loginViaEmailPassword(email, password);
-
-      console.log("LOGIN RESULT:", loginResult);
-      console.log("LOCAL STORAGE AFTER LOGIN:", JSON.stringify(localStorage, null, 2));
-
       window.location.href = "/";
     } catch (error) {
       console.error(error);
