@@ -16,6 +16,7 @@ export default function Perfil() {
     queryFn: () => base44.auth.me(),
   });
 
+
   const { data: fincaData } = useQuery({
     queryKey: ['current-finca'],
     queryFn: getCurrentFinca,
@@ -30,6 +31,26 @@ export default function Perfil() {
   });
 
   const config = configs[0] || {};
+
+  const displayName =
+    user?.full_name ||
+    user?.name ||
+    user?.email?.split("@")[0] ||
+    "Usuario";
+
+  const displayEmail =
+    user?.email ||
+    "No disponible";
+
+  const roleLabels = {
+    owner: "Propietario",
+    admin: "Administrador",
+    manager: "Encargado",
+    employee: "Empleado",
+    user: "Usuario",
+  };
+
+  const displayRole = roleLabels[user?.role] || "Usuario";
 
   const handleLogout = () => {
     localStorage.removeItem("base44_access_token");
@@ -52,17 +73,21 @@ export default function Perfil() {
             <User className="w-8 h-8 text-primary" />
           </div>
           <div>
-            <h2 className="font-bold text-xl text-foreground">{user?.full_name || 'Usuario'}</h2>
-            <p className="text-muted-foreground text-sm">{user?.email}</p>
+            <h2 className="font-bold text-xl text-foreground">{displayName}</h2>
+            <p className="text-muted-foreground text-sm">{displayEmail}</p>
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary mt-1">
-              {user?.role === 'admin' ? 'Administrador' : 'Usuario'}
+              {displayRole}
             </span>
           </div>
         </div>
         <div className="space-y-3 pt-4 border-t border-border">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Correo</span>
-            <span className="font-medium text-foreground">{user?.email}</span>
+            <span className="font-medium text-foreground">{displayEmail}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Tipo de usuario</span>
+            <span className="font-medium text-foreground">{displayRole}</span>
           </div>
           {config.nombre_finca && (
             <div className="flex justify-between text-sm">
