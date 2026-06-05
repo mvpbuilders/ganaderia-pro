@@ -32,7 +32,10 @@ export default function Perfil() {
   const config = configs[0] || {};
 
   const handleLogout = () => {
-    base44.auth.logout('/');
+    localStorage.removeItem("base44_access_token");
+    localStorage.removeItem("token");
+
+    window.location.href = "/login";
   };
 
   return (
