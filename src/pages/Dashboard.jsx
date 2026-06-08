@@ -56,7 +56,9 @@ export default function Dashboard() {
   const vacasEnfermas = animales.filter(a => a.estado === 'Enfermería').length;
   const enRetiro = animales.filter(a => a.retiro_leche_hasta && a.retiro_leche_hasta >= hoy).length;
 
-  const produccionHoy = vacasOrdenio.reduce((s, a) => s + (a.produccion_am || 0) + (a.produccion_pm || 0), 0);
+  const produccionHoy = registrosLeche
+    .filter(r => r.fecha === hoy && r.animal_id !== 'farm_total')
+    .reduce((s, r) => s + Number(r.total_litros || 0), 0);
   const promedioPorVaca = vacasOrdenio.length > 0 ? (produccionHoy / vacasOrdenio.length).toFixed(1) : 0;
 
   const now = new Date();
@@ -71,9 +73,27 @@ export default function Dashboard() {
   const gananciaMes = ingresosMes - egresosMes;
 
   // Farm-total records for charts
-  const farmTotalRecords = registrosLeche
-    .filter(r => r.animal_id === 'farm_total')
-    .sort((a, b) => a.fecha.localeCompare(b.fecha));
+  // Farm-total records for charts: sum all animal records by date
+  const farmTotalRecords = Object.values(
+    registrosLeche.reduce((acc, r) => {
+      if (!r.fecha) return acc;
+
+      if (!acc[r.fecha]) {
+        acc[r.fecha] = {
+          fecha: r.fecha,
+          litros_am: 0,
+          litros_pm: 0,
+          total_litros: 0,
+        };
+      }
+
+      acc[r.fecha].litros_am += Number(r.litros_am || 0);
+      acc[r.fecha].litros_pm += Number(r.litros_pm || 0);
+      acc[r.fecha].total_litros += Number(r.total_litros || 0);
+
+      return acc;
+    }, {})
+  ).sort((a, b) => a.fecha.localeCompare(b.fecha));
 
   // Last 14 days production - interpolate between known records
   const last14Days = Array.from({ length: 14 }, (_, i) => {

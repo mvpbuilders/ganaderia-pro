@@ -14,14 +14,26 @@ export default function AnimalDetalle({ animal, onBack, onEdit }) {
   const [tab, setTab] = useState("General");
   const [showEventoModal, setShowEventoModal] = useState(false);
 
+  const fincaId = animal?.finca_id;
+
   const { data: eventos = [], refetch: refetchEventos } = useQuery({
-    queryKey: ['eventos-animal', animal.id],
-    queryFn: () => base44.entities.Evento.filter({ animal_id: animal.id }, '-fecha', 100),
+    queryKey: ['eventos-animal', fincaId, animal.id],
+    enabled: !!fincaId && !!animal?.id,
+    queryFn: () => base44.entities.Evento.filter(
+      { finca_id: fincaId, animal_id: animal.id },
+      '-fecha',
+      100
+    ),
   });
 
   const { data: registrosLeche = [] } = useQuery({
-    queryKey: ['leche-animal', animal.id],
-    queryFn: () => base44.entities.RegistroLeche.filter({ animal_id: animal.id }, '-fecha', 60),
+    queryKey: ['leche-animal', fincaId, animal.id],
+    enabled: !!fincaId && !!animal?.id,
+    queryFn: () => base44.entities.RegistroLeche.filter(
+      { finca_id: fincaId, animal_id: animal.id },
+      '-fecha',
+      60
+    ),
   });
 
   const hoy = new Date().toISOString().split('T')[0];
