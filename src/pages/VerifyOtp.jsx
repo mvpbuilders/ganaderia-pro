@@ -15,11 +15,18 @@ export default function VerifyOtp() {
   const handleVerify = async (e) => {
     e.preventDefault();
     setLoading(true);
-
     try {
       await base44.auth.verifyOtp({ email, otpCode });
-      toast.success("Email verificado. Ya podés ingresar.");
-      window.location.href = "/login";
+      const pwd = sessionStorage.getItem("signup_password");
+      sessionStorage.removeItem("signup_email");
+      sessionStorage.removeItem("signup_password");
+      if (pwd) {
+        await base44.auth.loginViaEmailPassword(email, pwd);
+        window.location.href = "/";
+      } else {
+        toast.success("Email verificado. Ya podés ingresar.");
+        window.location.href = "/login";
+      }
     } catch (error) {
       console.error("Verify OTP error:", error);
       toast.error(error?.data?.message || error?.message || "No pudimos verificar el código.");
@@ -36,21 +43,17 @@ export default function VerifyOtp() {
           <h1 className="text-2xl font-bold">Verificar email</h1>
           <p className="text-sm text-muted-foreground">Ingresá el código que recibiste por email</p>
         </div>
-
         <div>
           <Label>Email</Label>
           <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </div>
-
         <div>
           <Label>Código</Label>
           <Input value={otpCode} onChange={(e) => setOtpCode(e.target.value)} required />
         </div>
-
         <Button type="submit" disabled={loading} className="w-full">
           {loading ? "Verificando..." : "Verificar"}
         </Button>
-
         <p className="text-center text-sm">
           <Link to="/login" className="text-primary font-semibold hover:underline">
             Volver al login

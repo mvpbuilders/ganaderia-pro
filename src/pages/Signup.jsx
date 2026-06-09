@@ -24,6 +24,8 @@ export default function Signup() {
       });
 
       toast.success("Cuenta creada. Revisá tu email para verificar el código.");
+      sessionStorage.setItem("signup_email", email);
+      sessionStorage.setItem("signup_password", password);
       window.location.href = `/verify-otp?email=${encodeURIComponent(email)}`;
     } catch (error) {
       console.error(error);
