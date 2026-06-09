@@ -1,7 +1,7 @@
 import { getCurrentFinca } from "@/lib/current-finca";
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Save, Milk } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,6 @@ function formatDate(dateStr) {
 }
 
 export default function RegistroLeche() {
-  const queryClient = useQueryClient();
   const today = new Date().toISOString().split("T")[0];
   const { data: fincaData } = useQuery({
     queryKey: ["current-finca"],
@@ -35,6 +34,12 @@ export default function RegistroLeche() {
   // 5-day window
   const dates = Array.from({ length: 5 }, (_, i) => addDays(windowStart, i));
 
+  useEffect(() => {
+    if (!dates.includes(activeDate)) {
+      setActiveDate(dates[0]);
+    }
+  }, [windowStart]);
+
   const { data: animales = [] } = useQuery({
     queryKey: ["animales", fincaId],
     enabled: !!fincaId,
@@ -48,9 +53,10 @@ export default function RegistroLeche() {
 
   const vacasOrdenio = animales.filter(a => a.estado === "Ordeño");
 
-  const { data: registros = [] } = useQuery({
-    queryKey: ["registros-leche", fincaId, windowStart],
+  const { data: registros = [], refetch: refetchRegistros } = useQuery({
+    queryKey: ["registros-leche", fincaId],
     enabled: !!fincaId,
+    placeholderData: (previousData) => previousData,
     queryFn: () =>
       base44.entities.RegistroLeche.filter(
         { finca_id: fincaId },
@@ -91,9 +97,7 @@ export default function RegistroLeche() {
         });
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["registros-leche"] });
-    },
+    onSuccess: () => {},
   });
 
   const handleSaveAll = async () => {
@@ -110,15 +114,27 @@ export default function RegistroLeche() {
       });
     }).filter(Boolean);
     await Promise.all(promises);
+    await refetchRegistros();
     setEdits({});
     toast.success("Registros guardados correctamente");
   };
 
   const getVal = (fecha, animalId, field) => {
     const key = `${fecha}__${animalId}`;
-    if (edits[key]?.[field] !== undefined) return edits[key][field];
+
+    if (edits[key]?.[field] !== undefined) {
+      return edits[key][field];
+    }
+
     const rec = recordMap[key];
-    if (rec) return field === "am" ? (rec.litros_am ?? "") : (rec.litros_pm ?? "");
+
+    if (rec) {
+      const value = field === "am" ? rec.litros_am : rec.litros_pm;
+      return value === null || value === undefined
+        ? ""
+        : Number(value).toFixed(1);
+    }
+
     return "";
   };
 
@@ -162,54 +178,8 @@ export default function RegistroLeche() {
         </div>
       </div>
 
-      {/* Date Navigation */}
-      <div className="flex items-center gap-2 bg-card rounded-xl border border-border p-3">
-        <Button variant="outline" size="icon" onClick={() => setWindowStart(w => addDays(w, -1))}>
-          <ChevronLeft className="w-4 h-4" />
-        </Button>
-        <Button variant="ghost" size="sm" onClick={() => setWindowStart(w => addDays(w, -5))}>
-          ‹‹ 5 días
-        </Button>
-        <div className="flex-1 flex gap-1 justify-center">
-          {dates.map(fecha => (
-            <button
-              key={fecha}
-              onClick={() => setActiveDate(fecha)}
-              className={`flex-1 rounded-lg px-2 py-2 text-xs font-medium transition-all text-center ${
-                fecha === activeDate
-                  ? "bg-primary text-primary-foreground shadow"
-                  : fecha === today
-                  ? "bg-accent text-accent-foreground border border-primary/30"
-                  : "hover:bg-secondary text-muted-foreground"
-              }`}
-            >
-              <div className="hidden sm:block">{formatDate(fecha)}</div>
-              <div className="sm:hidden">{fecha.slice(5)}</div>
-            </button>
-          ))}
-        </div>
-        <Button variant="ghost" size="sm" onClick={() => setWindowStart(w => addDays(w, 5))}>
-          5 días ››
-        </Button>
-        <Button variant="outline" size="icon" onClick={() => setWindowStart(w => addDays(w, 1))}>
-          <ChevronRight className="w-4 h-4" />
-        </Button>
-      </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-5 gap-2">
-        {dates.map((fecha, i) => (
-          <div key={fecha} className={`rounded-xl border p-3 text-center transition-all ${
-            fecha === activeDate ? "border-primary bg-accent" : "border-border bg-card"
-          }`}>
-            <p className="text-xs text-muted-foreground mb-1 hidden sm:block">{formatDate(fecha)}</p>
-            <p className="text-xs text-muted-foreground mb-1 sm:hidden">{fecha.slice(5)}</p>
-            <p className="text-lg font-bold text-foreground">{dayTotals[i].total.toFixed(0)}L</p>
-            <p className="text-xs text-muted-foreground">AM {dayTotals[i].am.toFixed(0)} / PM {dayTotals[i].pm.toFixed(0)}</p>
-          </div>
-        ))}
-      </div>
-
+      
       {/* Table */}
       {vacasOrdenio.length === 0 ? (
         <div className="bg-card rounded-xl border border-border p-12 text-center text-muted-foreground">
@@ -223,26 +193,56 @@ export default function RegistroLeche() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-secondary/50">
-                  <th className="text-left px-4 py-3 font-semibold text-foreground sticky left-0 bg-secondary/50 min-w-[140px]">Vaca</th>
+                  <th className="text-left px-4 py-3 font-semibold text-foreground sticky left-0 bg-secondary/50 min-w-[140px]">
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="icon" onClick={() => setWindowStart(w => addDays(w, -1))}>
+                        <ChevronLeft className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => setWindowStart(w => addDays(w, -5))}>
+                        ‹‹
+                      </Button>
+                    </div>
+                  </th>
+
                   {dates.map(fecha => (
-                    <th key={fecha} colSpan={2} className={`text-center px-2 py-3 font-semibold min-w-[120px] ${
-                      fecha === activeDate ? "bg-accent text-accent-foreground" : "text-muted-foreground"
-                    }`}>
+                    <th
+                      key={fecha}
+                      colSpan={2}
+                      onClick={() => setActiveDate(fecha)}
+                      className={`cursor-pointer text-center px-2 py-3 font-semibold min-w-[120px] ${
+                        fecha === activeDate ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-secondary"
+                      }`}
+                    >
                       <div className="hidden sm:block text-xs">{formatDate(fecha)}</div>
                       <div className="sm:hidden text-xs">{fecha.slice(5)}</div>
                     </th>
                   ))}
-                  <th className="text-center px-3 py-3 font-semibold text-muted-foreground min-w-[60px]">Prom.</th>
+
+                  <th className="text-center px-3 py-3 font-semibold text-muted-foreground min-w-[80px]">
+                    <div className="flex items-center justify-center gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => setWindowStart(w => addDays(w, 5))}>
+                        ››
+                      </Button>
+                      <Button variant="outline" size="icon" onClick={() => setWindowStart(w => addDays(w, 1))}>
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </th>
                 </tr>
+
                 <tr className="border-b border-border text-xs text-muted-foreground bg-secondary/20">
-                  <th className="sticky left-0 bg-secondary/20 px-4 py-1"></th>
+                  <th className="sticky left-0 bg-secondary/20 px-4 py-1">Vaca</th>
                   {dates.map(fecha => (
                     <>
-                      <th key={`${fecha}-am`} className={`text-center py-1 px-1 ${fecha === activeDate ? "bg-accent/50" : ""}`}>AM</th>
-                      <th key={`${fecha}-pm`} className={`text-center py-1 px-1 ${fecha === activeDate ? "bg-accent/50" : ""}`}>PM</th>
+                      <th key={`${fecha}-am`} className={`text-center py-1 px-1 ${fecha === activeDate ? "bg-accent/50" : ""}`}>
+                        AM
+                      </th>
+                      <th key={`${fecha}-pm`} className={`text-center py-1 px-1 ${fecha === activeDate ? "bg-accent/50" : ""}`}>
+                        PM
+                      </th>
                     </>
                   ))}
-                  <th></th>
+                  <th className="text-center px-3 py-1">Prom.</th>
                 </tr>
               </thead>
               <tbody>
@@ -276,6 +276,11 @@ export default function RegistroLeche() {
                                   step="0.1"
                                   value={am}
                                   onChange={e => setVal(fecha, animal.id, "am", e.target.value)}
+                                  onBlur={e => {
+                                    const value = e.target.value;
+                                    if (value === "") return;
+                                    setVal(fecha, animal.id, "am", Number(value).toFixed(1));
+                                  }}
                                   className="w-16 h-7 text-center text-xs px-1"
                                   placeholder="0"
                                 />
