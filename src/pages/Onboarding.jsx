@@ -15,22 +15,31 @@ export default function Onboarding() {
 
     setLoading(true);
 
-    const user = await base44.auth.me();
+    try {
+      const user = await base44.auth.me();
+      console.log("ONBOARDING USER", user);
 
-    const finca = await base44.entities.Finca.create({
-      nombre,
-      owner_user_id: user.id
-    });
-    
-    await base44.entities.FincaUsuario.create({
-      finca_id: finca.id,
-      user_id: user.id,
-			email: user.email,
-			role: "owner"
-    });
+      const finca = await base44.entities.Finca.create({
+        nombre,
+        owner_user_id: user.id
+      });
+      console.log("FINCA CREADA", finca);
 
-    navigate("/");
-    window.location.reload();
+      const relacion = await base44.entities.FincaUsuario.create({
+        finca_id: finca.id,
+        user_id: user.id,
+        email: user.email,
+        role: "owner"
+      });
+      console.log("RELACION CREADA", relacion);
+
+      navigate("/");
+      window.location.reload();
+    } catch (error) {
+      console.error("crearFinca error:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

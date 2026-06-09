@@ -69,6 +69,14 @@ const AuthenticatedApp = () => {
     }
   }
 
+  if (needsOnboarding === null) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-background">
+        <p className="text-muted-foreground text-sm">Preparando tu finca...</p>
+      </div>
+    );
+  }
+
   if (needsOnboarding) {
     return <Onboarding />;
   }

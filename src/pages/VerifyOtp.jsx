@@ -18,8 +18,8 @@ export default function VerifyOtp() {
 
     try {
       await base44.auth.verifyOtp({ email, otpCode });
-      toast.success("Email verificado. Bienvenido.");
-      window.location.href = "/";
+      toast.success("Email verificado. Ya podés ingresar.");
+      window.location.href = "/login";
     } catch (error) {
       console.error("Verify OTP error:", error);
       toast.error(error?.data?.message || error?.message || "No pudimos verificar el código.");

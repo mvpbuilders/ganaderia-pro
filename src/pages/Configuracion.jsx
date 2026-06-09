@@ -23,6 +23,14 @@ export default function Configuracion() {
 
   const fincaId = fincaData?.finca?.id;
   const currentRole = fincaData?.relacion?.role;
+  const { data: usuariosFinca = [] } = useQuery({
+    queryKey: ["usuarios-finca", fincaId],
+    enabled: !!fincaId,
+    queryFn: () =>
+      base44.entities.FincaUsuario.filter({
+        finca_id: fincaId,
+      }),
+  });
   const canManageUsers = ["owner", "admin"].includes(currentRole);
 
   const { data: config } = useQuery({
@@ -322,6 +330,8 @@ export default function Configuracion() {
             </select>
           </div>
 
+          
+
           <Button
             onClick={handleInviteUser}
             disabled={!inviteEmail || !fincaId}
@@ -330,6 +340,33 @@ export default function Configuracion() {
             <UserPlus className="w-4 h-4" />
             Invitar usuario
           </Button>
+
+          {usuariosFinca.length > 0 && (
+            <div className="pt-4 border-t border-border">
+              <h3 className="font-medium mb-3">Usuarios actuales</h3>
+
+              <div className="space-y-2">
+                {usuariosFinca.map((usuario) => (
+                  <div
+                    key={usuario.id}
+                    className="flex items-center justify-between rounded-lg border border-border p-3"
+                  >
+                    <div>
+                      <p className="font-medium">{usuario.email}</p>
+                    </div>
+
+                    <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
+                      {usuario.role === "owner"
+                        ? "Owner"
+                        : usuario.role === "admin"
+                        ? "Administrador"
+                        : "Empleado"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </Card>
       )}

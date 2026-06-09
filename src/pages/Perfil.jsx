@@ -19,6 +19,7 @@ export default function Perfil() {
   });
 
   const fincaId = fincaData?.finca?.id;
+  const fincaNombre = fincaData?.finca?.nombre;
 
   const { data: configs = [] } = useQuery({
     queryKey: ['configuracion', fincaId],
@@ -46,7 +47,7 @@ export default function Perfil() {
     user: "Usuario",
   };
 
-  const displayRole = roleLabels[user?.role] || "Usuario";
+  const displayRole = roleLabels[fincaData?.relacion?.role] || "Usuario";
 
   const handleLogout = () => {
     localStorage.removeItem("base44_access_token");
@@ -85,10 +86,10 @@ export default function Perfil() {
             <span className="text-muted-foreground">Tipo de usuario</span>
             <span className="font-medium text-foreground">{displayRole}</span>
           </div>
-          {config.nombre_finca && (
+          {fincaNombre && (
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Finca</span>
-              <span className="font-medium text-foreground">{config.nombre_finca}</span>
+              <span className="font-medium text-foreground">{fincaNombre}</span>
             </div>
           )}
           {config.provincia && (
