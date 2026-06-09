@@ -11,7 +11,7 @@ import { toast } from "sonner";
 
 export default function Perfil() {
   const [saving, setSaving] = useState(false);
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   const { data: fincaData } = useQuery({
     queryKey: ['current-finca'],
@@ -49,11 +49,8 @@ export default function Perfil() {
 
   const displayRole = roleLabels[fincaData?.relacion?.role] || "Usuario";
 
-  const handleLogout = () => {
-    localStorage.removeItem("base44_access_token");
-    localStorage.removeItem("token");
-
-    window.location.href = "/login";
+  const handleLogout = async () => {
+    await logout();
   };
 
   return (

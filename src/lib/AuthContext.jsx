@@ -1,3 +1,4 @@
+import axios from 'axios';
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
@@ -11,6 +12,7 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(true);
   const [authError, setAuthError] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [appPublicSettings, setAppPublicSettings] = useState(null); // Contains only { id, public_settings }
 
   useEffect(() => {
@@ -43,6 +45,7 @@ export const AuthProvider = ({ children }) => {
         } else {
           setIsLoadingAuth(false);
           setIsAuthenticated(false);
+          setAuthChecked(true);
         }
         setIsLoadingPublicSettings(false);
       } catch (appError) {
@@ -89,18 +92,24 @@ export const AuthProvider = ({ children }) => {
 
   const checkUserAuth = async () => {
     try {
-      // Now check if the user is authenticated
       setIsLoadingAuth(true);
+      setAuthChecked(false);
+
       const currentUser = await base44.auth.me();
+
       setUser(currentUser);
       setIsAuthenticated(true);
+      setAuthError(null);
+      setAuthChecked(true);
       setIsLoadingAuth(false);
     } catch (error) {
       console.error('User auth check failed:', error);
-      setIsLoadingAuth(false);
+
+      setUser(null);
       setIsAuthenticated(false);
-      
-      // If user auth fails, it might be an expired token
+      setAuthChecked(true);
+      setIsLoadingAuth(false);
+
       if (error.status === 401 || error.status === 403) {
         setAuthError({
           type: 'auth_required',
@@ -110,32 +119,32 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    localStorage.removeItem('base44_access_token');
+    localStorage.removeItem('token');
+    delete axios.defaults.headers.common["Authorization"];
     setUser(null);
     setIsAuthenticated(false);
-
-    localStorage.removeItem("base44_access_token");
-    localStorage.removeItem("token");
-
+    setAuthError(null);
+    setAuthChecked(false);
+    try {
+      await fetch(
+        `https://ganaderia-pro-flujo.base44.app/api/apps/auth/logout?from_url=${encodeURIComponent(window.location.origin + "/login")}`,
+        { redirect: 'manual' }
+      );
+    } catch (e) {}
     window.location.href = "/login";
   };
 
-  const navigateToLogin = () => {
-    // Use the SDK's redirectToLogin method
-    base44.auth.redirectToLogin(window.location.href);
-  };
+    const navigateToLogin = () => {
+      // Use the SDK's redirectToLogin method
+      base44.auth.redirectToLogin(window.location.href);
+    };
 
   return (
     <AuthContext.Provider value={{ 
-      user, 
-      isAuthenticated, 
-      isLoadingAuth,
-      isLoadingPublicSettings,
-      authError,
-      appPublicSettings,
-      logout,
-      navigateToLogin,
-      checkAppState
+      user, isAuthenticated, isLoadingAuth, authChecked, isLoadingPublicSettings,
+      authError, appPublicSettings, logout, navigateToLogin, checkAppState, checkUserAuth
     }}>
       {children}
     </AuthContext.Provider>

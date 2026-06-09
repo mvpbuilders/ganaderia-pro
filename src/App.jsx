@@ -29,24 +29,27 @@ import VerifyOtp from './pages/VerifyOtp';
 
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings, authError, authChecked, user } = useAuth();
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
   useEffect(() => {
     const checkFinca = async () => {
-      const user = await base44.auth.me();
-
-      const relaciones = await base44.entities.FincaUsuario.filter({
-        email: user.email
-      });
-
-      setNeedsOnboarding(relaciones.length === 0);
+      try {
+        const user = await base44.auth.me();
+        const relaciones = await base44.entities.FincaUsuario.filter({
+          email: user.email
+        });
+        setNeedsOnboarding(relaciones.length === 0);
+      } catch (error) {
+        // si falla, mandar al login
+        window.location.href = "/login";
+      }
     };
 
     checkFinca();
   }, []);
 
-  if (isLoadingPublicSettings || isLoadingAuth) {
+  if (isLoadingPublicSettings || isLoadingAuth || !authChecked || !user) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
