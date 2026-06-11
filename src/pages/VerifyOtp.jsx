@@ -4,16 +4,17 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
 
 export default function VerifyOtp() {
   const [searchParams] = useSearchParams();
   const [email, setEmail] = useState(searchParams.get("email") || "");
   const [otpCode, setOtpCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleVerify = async (e) => {
     e.preventDefault();
+    setError("");
     setLoading(true);
     try {
       await base44.auth.verifyOtp({ email, otpCode });
@@ -24,12 +25,18 @@ export default function VerifyOtp() {
         await base44.auth.loginViaEmailPassword(email, pwd);
         window.location.href = "/";
       } else {
-        toast.success("Email verificado. Ya podés ingresar.");
         window.location.href = "/login";
       }
-    } catch (error) {
-      console.error("Verify OTP error:", error);
-      toast.error(error?.data?.message || error?.message || "No pudimos verificar el código.");
+    } catch (err) {
+      console.error("Verify OTP error:", err);
+      const msg = err?.data?.message || err?.message || "";
+      if (msg.toLowerCase().includes("expired")) {
+        setError("El código expiró. Solicitá uno nuevo.");
+      } else if (msg.toLowerCase().includes("invalid")) {
+        setError("Código incorrecto. Revisá el email.");
+      } else {
+        setError("No pudimos verificar el código. Intentá de nuevo.");
+      }
     } finally {
       setLoading(false);
     }
@@ -49,8 +56,18 @@ export default function VerifyOtp() {
         </div>
         <div>
           <Label>Código</Label>
-          <Input value={otpCode} onChange={(e) => setOtpCode(e.target.value)} required />
+          <Input
+            value={otpCode}
+            onChange={(e) => setOtpCode(e.target.value)}
+            required
+            className={error ? "border-red-400" : ""}
+          />
         </div>
+
+        {error && (
+          <p className="text-sm text-red-500 text-center">{error}</p>
+        )}
+
         <Button type="submit" disabled={loading} className="w-full">
           {loading ? "Verificando..." : "Verificar"}
         </Button>

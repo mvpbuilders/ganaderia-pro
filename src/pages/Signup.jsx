@@ -11,11 +11,19 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
 
   const handleSignup = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    setErrors({});
 
+    // Validación local antes de llamar a la API
+    if (password.length < 8) {
+      setErrors({ password: "La contraseña debe tener al menos 8 caracteres." });
+      return;
+    }
+
+    setLoading(true);
     try {
       await base44.auth.register({
         full_name: fullName,
@@ -27,9 +35,14 @@ export default function Signup() {
       sessionStorage.setItem("signup_email", email);
       sessionStorage.setItem("signup_password", password);
       window.location.href = `/verify-otp?email=${encodeURIComponent(email)}`;
-    } catch (error) {
-      console.error(error);
-      toast.error("No pudimos crear la cuenta.");
+    } catch (err) {
+      console.error(err);
+      const msg = err?.data?.message || err?.message || "";
+      if (msg.toLowerCase().includes("email")) {
+        setErrors({ email: "Este email ya está registrado." });
+      } else {
+        setErrors({ general: "No pudimos crear la cuenta. Intentá de nuevo." });
+      }
     } finally {
       setLoading(false);
     }
@@ -51,13 +64,35 @@ export default function Signup() {
 
         <div>
           <Label>Email</Label>
-          <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <Input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className={errors.email ? "border-red-400" : ""}
+          />
+          {errors.email && (
+            <p className="text-sm text-red-500 mt-1">{errors.email}</p>
+          )}
         </div>
 
         <div>
           <Label>Contraseña</Label>
-          <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <Input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className={errors.password ? "border-red-400" : ""}
+          />
+          {errors.password && (
+            <p className="text-sm text-red-500 mt-1">{errors.password}</p>
+          )}
         </div>
+
+        {errors.general && (
+          <p className="text-sm text-red-500 text-center">{errors.general}</p>
+        )}
 
         <Button type="submit" disabled={loading} className="w-full">
           {loading ? "Creando cuenta..." : "Crear cuenta"}

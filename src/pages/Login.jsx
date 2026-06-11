@@ -4,23 +4,24 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setError("");
     setLoading(true);
 
     try {
-      const loginResult = await base44.auth.loginViaEmailPassword(email, password);
+      await base44.auth.loginViaEmailPassword(email, password);
       window.location.href = "/";
-    } catch (error) {
-      console.error(error);
-      toast.error("No pudimos iniciar sesión. Revisá email y contraseña.");
+    } catch (err) {
+      console.error(err);
+      setError("Email o contraseña incorrectos. Revisá tus datos.");
     } finally {
       setLoading(false);
     }
@@ -44,6 +45,10 @@ export default function Login() {
           <Label>Contraseña</Label>
           <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </div>
+
+        {error && (
+          <p className="text-sm text-red-500 text-center">{error}</p>
+        )}
 
         <Button type="submit" disabled={loading} className="w-full">
           {loading ? "Ingresando..." : "Ingresar"}
