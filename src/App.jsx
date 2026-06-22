@@ -26,7 +26,11 @@ import RegistroLeche from './pages/RegistroLeche.jsx';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import VerifyOtp from './pages/VerifyOtp';
-
+import AdminDashboard from './pages/AdminDashboard';
+import AdminUsers from './pages/AdminUsers';
+import AdminFincas from './pages/AdminFincas';
+import AdminRoute from '@/components/AdminRoute';
+// import AdminTest from './pages/AdminTest';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, authChecked, user } = useAuth();
@@ -96,6 +100,33 @@ const AuthenticatedApp = () => {
         <Route path="/perfil" element={<Perfil />} />
         <Route path="/eventos/nuevo" element={<Eventos />} />
         <Route path="/registro-leche" element={<RegistroLeche />} />
+        <Route
+  path="/admin"
+  element={
+    <AdminRoute>
+      <AdminDashboard />
+    </AdminRoute>
+  }
+/>
+
+<Route
+  path="/admin/users"
+  element={
+    <AdminRoute>
+      <AdminUsers />
+    </AdminRoute>
+  }
+/>
+
+<Route
+  path="/admin/fincas"
+  element={
+    <AdminRoute>
+      <AdminFincas />
+    </AdminRoute>
+  }
+/>
+
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
@@ -111,6 +142,7 @@ function App() {
           <Route path="/signup" element={<Signup />} />
           <Route path="/verify-otp" element={<VerifyOtp />} />
           <Route path="/current-user" element={<CurrentUser />} />
+
 
           <Route
             path="/*"

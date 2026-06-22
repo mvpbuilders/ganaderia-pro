@@ -1,10 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
 import { 
   LayoutDashboard, MapPin, DollarSign, Calendar, 
-  BarChart2, Settings, User, Menu, ChevronRight, Milk
+  BarChart2, Settings, User, Menu, ChevronRight, Milk, Shield
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import CowIcon from "@/components/icons/CowIcon.jsx";
+import { useAuth } from "@/lib/AuthContext";
+import { isPlatformAdmin } from "@/lib/platform-admins";
 
 const navItems = [
   { path: "/", icon: LayoutDashboard, label: "Inicio" },
@@ -20,6 +22,10 @@ const navItems = [
 
 export default function Sidebar({ collapsed, setCollapsed }) {
   const location = useLocation();
+  const { user } = useAuth();
+const items = isPlatformAdmin(user)
+  ? [...navItems, { path: "/admin", icon: Shield, label: "Admin" }]
+  : navItems;
 
   return (
     <aside className={cn(
@@ -54,7 +60,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
 
       {/* Nav */}
       <nav className="flex-1 py-4 overflow-y-auto scrollbar-hide">
-        {navItems.map((item) => {
+        {items.map((item) => {
           const active = location.pathname === item.path;
           const Icon = item.icon;
           return (

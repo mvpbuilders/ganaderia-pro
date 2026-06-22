@@ -1,7 +1,9 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, MapPin, DollarSign, BarChart2, Milk } from "lucide-react";
+import { LayoutDashboard, DollarSign, BarChart2, Milk, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import CowIcon from "@/components/icons/CowIcon.jsx";
+import { useAuth } from "@/lib/AuthContext";
+import { isPlatformAdmin } from "@/lib/platform-admins"; 
 
 const navItems = [
   { path: "/", icon: LayoutDashboard, label: "Inicio" },
@@ -13,11 +15,16 @@ const navItems = [
 
 export default function MobileNav() {
   const location = useLocation();
+  const { user } = useAuth();
+
+const items = isPlatformAdmin(user)
+  ? [...navItems, { path: "/admin", icon: Shield, label: "Admin" }]
+  : navItems;
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-sidebar border-t border-sidebar-border z-50">
       <div className="flex items-center justify-around py-2 px-2">
-        {navItems.map((item) => {
+        {items.map((item) => {
           const active = location.pathname === item.path;
           const Icon = item.icon;
           return (
