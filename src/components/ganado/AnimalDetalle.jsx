@@ -110,13 +110,15 @@ export default function AnimalDetalle({ animal, onBack, onEdit }) {
             <h3 className="font-semibold text-foreground flex items-center gap-2"><Users className="w-4 h-4" />Información General</h3>
             {[
               ["Nombre", animal.nombre],
-              ["ID / Arete", animal.numero_id || "-"],
+              ["ID oficial", animal.numero_id || "-"],
+              ["Arete", animal.arete || "-"],
+              ["Número de Registro", animal.numero_registro || "-"],
               ["Raza", animal.raza || "-"],
               ["Edad", calcularEdad(animal.fecha_nacimiento)],
               ["Peso actual", animal.peso_kg ? `${animal.peso_kg} kg` : "-"],
               ["Grupo / Lote", animal.grupo || "-"],
               ["Padre", animal.padre_nombre || "-"],
-              ["ID Madre", animal.madre_id || "-"],
+              ["Madre", animal.madre_id || "-"],
             ].map(([label, value]) => (
               <div key={label} className="flex justify-between text-sm border-b border-border pb-2 last:border-0 last:pb-0">
                 <span className="text-muted-foreground">{label}</span>

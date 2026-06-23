@@ -72,16 +72,26 @@ export default function Ganado() {
   const produccionTotal = animales.filter(a => a.estado === "Ordeño")
     .reduce((s, a) => s + (a.produccion_am || 0) + (a.produccion_pm || 0), 0);
 
-  if (animalDetalle) {
-    return (
+if (animalDetalle) {
+  return (
+    <>
       <AnimalDetalle
         animal={animalDetalle}
         onBack={() => setAnimalDetalle(null)}
         onEdit={() => { setAnimalEditar(animalDetalle); setShowModal(true); }}
       />
-    );
-  }
 
+      {showModal && (
+        <AnimalModal
+          animal={animalEditar}
+          fincaId={fincaId}
+          onClose={() => setShowModal(false)}
+          onSave={handleSave}
+        />
+      )}
+    </>
+  );
+}
   return (
     <div className="space-y-5 animate-fade-in">
       {/* Header */}

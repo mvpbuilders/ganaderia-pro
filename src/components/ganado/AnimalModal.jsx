@@ -18,11 +18,24 @@ export default function AnimalModal({ animal, fincaId, onClose, onSave }) {
     estado: animal.estado || "Ordeño",
     estado_reproductivo: animal.estado_reproductivo || "Abierta",
   } : {
-    nombre: "", numero_id: "", raza: "Holstein", fecha_nacimiento: "",
-    sexo: "Hembra", estado: "Ordeño", estado_reproductivo: "Abierta",
-    grupo: "", peso_kg: "", produccion_am: "", produccion_pm: "",
-    produccion_diaria_litros: "", racion_actual: "", notas: "",
-    padre_nombre: "", madre_id: ""
+nombre: "",
+numero_id: "",
+arete: "",
+numero_registro: "",
+raza: "Holstein",
+fecha_nacimiento: "",
+sexo: "Hembra",
+estado: "Ordeño",
+estado_reproductivo: "Abierta",
+grupo: "",
+peso_kg: "",
+produccion_am: "",
+produccion_pm: "",
+produccion_diaria_litros: "",
+racion_actual: "",
+notas: "",
+padre_nombre: "",
+madre_id: ""
   });
   const [loading, setLoading] = useState(false);
 
@@ -59,18 +72,30 @@ export default function AnimalModal({ animal, fincaId, onClose, onSave }) {
           <button onClick={onClose} className="p-1.5 hover:bg-secondary rounded-lg"><X className="w-5 h-5" /></button>
         </div>
         <div className="p-5 space-y-4">
-          {/* Identificación */}
-          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Identificación</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="text-xs font-semibold mb-1.5 block">Nombre *</Label>
-              <Input value={form.nombre} onChange={e => set("nombre", e.target.value)} placeholder="Ej: Estrella" />
-            </div>
-            <div>
-              <Label className="text-xs font-semibold mb-1.5 block">ID / Arete</Label>
-              <Input value={form.numero_id} onChange={e => set("numero_id", e.target.value)} placeholder="EC-0001" />
-            </div>
-          </div>
+{/* Identificación */}
+<p className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Identificación</p>
+
+<div className="grid grid-cols-2 gap-3">
+  <div>
+    <Label className="text-xs font-semibold mb-1.5 block">Nombre *</Label>
+    <Input value={form.nombre} onChange={e => set("nombre", e.target.value)} placeholder="Ej: Estrella" />
+  </div>
+  <div>
+    <Label className="text-xs font-semibold mb-1.5 block">ID oficial</Label>
+    <Input value={form.numero_id} onChange={e => set("numero_id", e.target.value)} placeholder="EC-0001" />
+  </div>
+</div>
+
+<div className="grid grid-cols-2 gap-3">
+  <div>
+    <Label className="text-xs font-semibold mb-1.5 block">Arete</Label>
+    <Input value={form.arete || ""} onChange={e => set("arete", e.target.value)} placeholder="Ej: 152" />
+  </div>
+  <div>
+    <Label className="text-xs font-semibold mb-1.5 block">Número de Registro</Label>
+    <Input value={form.numero_registro || ""} onChange={e => set("numero_registro", e.target.value)} placeholder="Ej: HOL-987654" />
+  </div>
+</div>
           <div className="grid grid-cols-3 gap-3">
             <div>
               <Label className="text-xs font-semibold mb-1.5 block">Raza</Label>
