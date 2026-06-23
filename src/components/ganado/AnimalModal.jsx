@@ -58,6 +58,7 @@ madre_id: ""
           ? Number(form.produccion_diaria_litros)
           : undefined),
     };
+    console.log("GUARDANDO ANIMAL", data);
     if (animal?.id) await base44.entities.Animal.update(animal.id, data);
     else await base44.entities.Animal.create(data);
     setLoading(false);
@@ -197,7 +198,7 @@ madre_id: ""
               <Input value={form.padre_nombre || ""} onChange={e => set("padre_nombre", e.target.value)} placeholder="Ej: Campeón 5" />
             </div>
             <div>
-              <Label className="text-xs font-semibold mb-1.5 block">ID de la Madre</Label>
+              <Label className="text-xs font-semibold mb-1.5 block"> ID de la Madre </Label>
               <Input value={form.madre_id || ""} onChange={e => set("madre_id", e.target.value)} placeholder="EC-0002" />
             </div>
           </div>

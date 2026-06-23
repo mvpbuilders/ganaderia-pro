@@ -36,6 +36,24 @@ export default function AnimalDetalle({ animal, onBack, onEdit }) {
     ),
   });
 
+const { data: animalesFinca = [] } = useQuery({
+  queryKey: ['animales-finca', fincaId],
+  enabled: !!fincaId && !!animal?.madre_id,
+  queryFn: () => base44.entities.Animal.filter(
+    { finca_id: fincaId },
+    '-created_date',
+    500
+  ),
+});
+
+const madreDisplay = (() => {
+  if (!animal.madre_id) return "-";
+
+  const madre = animalesFinca.find((a) => a.id === animal.madre_id);
+
+  return madre?.nombre || animal.madre_id;
+})();
+
   const hoy = new Date().toISOString().split('T')[0];
   const enRetiro = animal.retiro_leche_hasta && animal.retiro_leche_hasta >= hoy;
   const diasRetiro = enRetiro ? Math.ceil((new Date(animal.retiro_leche_hasta) - new Date()) / 86400000) : 0;
@@ -118,7 +136,7 @@ export default function AnimalDetalle({ animal, onBack, onEdit }) {
               ["Peso actual", animal.peso_kg ? `${animal.peso_kg} kg` : "-"],
               ["Grupo / Lote", animal.grupo || "-"],
               ["Padre", animal.padre_nombre || "-"],
-              ["Madre", animal.madre_id || "-"],
+              ["Madre", madreDisplay],
             ].map(([label, value]) => (
               <div key={label} className="flex justify-between text-sm border-b border-border pb-2 last:border-0 last:pb-0">
                 <span className="text-muted-foreground">{label}</span>
