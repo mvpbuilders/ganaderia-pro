@@ -46,13 +46,7 @@ const { data: animalesFinca = [] } = useQuery({
   ),
 });
 
-const madreDisplay = (() => {
-  if (!animal.madre_id) return "-";
-
-  const madre = animalesFinca.find((a) => a.id === animal.madre_id);
-
-  return madre?.nombre || animal.madre_id;
-})();
+const madreDisplay = animal.madre_nombre || "-";
 
   const hoy = new Date().toISOString().split('T')[0];
   const enRetiro = animal.retiro_leche_hasta && animal.retiro_leche_hasta >= hoy;
@@ -143,7 +137,9 @@ const madreDisplay = (() => {
               ["Peso actual", animal.peso_kg ? `${animal.peso_kg} kg` : "-"],
               ["Grupo / Lote", animal.grupo || "-"],
               ["Padre", animal.padre_nombre || "-"],
+              ["ID Padre", animal.padre_id || "-"],
               ["Madre", madreDisplay],
+              ["ID Madre", animal.madre_id || "-"],
             ].map(([label, value]) => (
               <div key={label} className="flex justify-between text-sm border-b border-border pb-2 last:border-0 last:pb-0">
                 <span className="text-muted-foreground">{label}</span>

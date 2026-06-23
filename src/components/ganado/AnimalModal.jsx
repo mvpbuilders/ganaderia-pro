@@ -35,7 +35,9 @@ produccion_diaria_litros: "",
 racion_actual: "",
 notas: "",
 padre_nombre: "",
-madre_id: ""
+padre_id: "",
+madre_nombre: "",
+madre_id: "",
   });
   const [loading, setLoading] = useState(false);
 
@@ -201,23 +203,54 @@ madre_id: ""
             </div>
           </div>
 
-          {/* Pedigree */}
-          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide pt-2">Pedigree</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="text-xs font-semibold mb-1.5 block">Nombre del Padre</Label>
-              <Input value={form.padre_nombre || ""} onChange={e => set("padre_nombre", e.target.value)} placeholder="Ej: Campeón 5" />
-            </div>
-            <div>
-              <Label className="text-xs font-semibold mb-1.5 block"> ID de la Madre </Label>
-              <Input value={form.madre_id || ""} onChange={e => set("madre_id", e.target.value)} placeholder="EC-0002" />
-            </div>
-          </div>
+         {/* Pedigree */}
+<p className="text-xs font-bold text-muted-foreground uppercase tracking-wide pt-2">Pedigree</p>
+<div className="grid grid-cols-2 gap-3">
+  <div>
+    <Label className="text-xs font-semibold mb-1.5 block">Nombre del Padre</Label>
+    <Input
+      value={form.padre_nombre || ""}
+      onChange={e => set("padre_nombre", e.target.value)}
+      placeholder="Ej: Campeón 5"
+    />
+  </div>
 
-          <div>
-            <Label className="text-xs font-semibold mb-1.5 block">Notas</Label>
-            <Input value={form.notas || ""} onChange={e => set("notas", e.target.value)} placeholder="Observaciones..." />
-          </div>
+  <div>
+    <Label className="text-xs font-semibold mb-1.5 block">ID del Padre</Label>
+    <Input
+      value={form.padre_id || ""}
+      onChange={e => set("padre_id", e.target.value)}
+      placeholder="TORO-001"
+    />
+  </div>
+
+  <div>
+    <Label className="text-xs font-semibold mb-1.5 block">Nombre de la Madre</Label>
+    <Input
+      value={form.madre_nombre || ""}
+      onChange={e => set("madre_nombre", e.target.value)}
+      placeholder="Ej: Luli"
+    />
+  </div>
+
+  <div>
+    <Label className="text-xs font-semibold mb-1.5 block">ID de la Madre</Label>
+    <Input
+      value={form.madre_id || ""}
+      onChange={e => set("madre_id", e.target.value)}
+      placeholder="OK-0002"
+    />
+  </div>
+</div>
+
+<div>
+  <Label className="text-xs font-semibold mb-1.5 block">Notas</Label>
+  <Input
+    value={form.notas || ""}
+    onChange={e => set("notas", e.target.value)}
+    placeholder="Observaciones..."
+  />
+</div>
         </div>
         <div className="flex gap-3 p-5 border-t border-border">
           <Button variant="outline" onClick={onClose} className="flex-1">Cancelar</Button>

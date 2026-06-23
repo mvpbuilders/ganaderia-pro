@@ -113,12 +113,18 @@
       "type": "string",
       "format": "date"
     },
-    "madre_id": {
-      "type": "string"
-    },
     "padre_nombre": {
-      "type": "string"
-    },
+  "type": "string"
+},
+"padre_id": {
+  "type": "string"
+},
+"madre_nombre": {
+  "type": "string"
+},
+"madre_id": {
+  "type": "string"
+},
     "racion_actual": {
       "type": "string"
     },
