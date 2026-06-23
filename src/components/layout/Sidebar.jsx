@@ -91,7 +91,7 @@ const items = isPlatformAdmin(user)
       {/* Footer */}
       {!collapsed && (
         <div className="p-4 border-t border-sidebar-border">
-          <p className="text-sidebar-foreground text-xs opacity-60">GanaderíaPro v1.0</p>
+          <p className="text-sidebar-foreground text-xs opacity-60">GanaderíaPro V1.0</p>
           <p className="text-sidebar-foreground text-xs opacity-40">Ecuador 🇪🇨</p>
         </div>
       )}
