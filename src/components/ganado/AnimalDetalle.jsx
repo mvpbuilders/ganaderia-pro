@@ -76,6 +76,13 @@ const madreDisplay = (() => {
     Produccion: "🥛", Muerte: "💀", Venta: "💰", Destete: "🍼"
   };
 
+  console.log("RENDER ANIMAL DETALLE", {
+  id: animal.id,
+  nombre: animal.nombre,
+  arete: animal.arete,
+  numero_registro: animal.numero_registro,
+});
+
   return (
     <div className="space-y-5 animate-fade-in">
       {/* Header */}
@@ -129,7 +136,7 @@ const madreDisplay = (() => {
             {[
               ["Nombre", animal.nombre],
               ["ID oficial", animal.numero_id || "-"],
-              ["Arete", animal.arete || "-"],
+              ["Arete", [animal.arete || "-"],],
               ["Número de Registro", animal.numero_registro || "-"],
               ["Raza", animal.raza || "-"],
               ["Edad", calcularEdad(animal.fecha_nacimiento)],

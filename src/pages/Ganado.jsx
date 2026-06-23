@@ -45,17 +45,16 @@ export default function Ganado() {
     queryFn: () => base44.entities.Animal.filter({ finca_id: fincaId }, '-created_date', 500),
   });
 
-  const handleSave = async () => {
-  await queryClient.invalidateQueries(['animales']);
+  const handleSave = async (animalActualizado) => {
+    await queryClient.invalidateQueries({ queryKey: ['animales', fincaId] });
 
-  setShowModal(false);
-  setAnimalEditar(null);
+    setShowModal(false);
+    setAnimalEditar(null);
 
-  if (animalDetalle?.id) {
-    const actualizado = await base44.entities.Animal.get(animalDetalle.id);
-    setAnimalDetalle(actualizado);
-  }
-};
+    if (animalDetalle?.id && animalActualizado?.id === animalDetalle.id) {
+      setAnimalDetalle(animalActualizado);
+    }
+  };
 
   const filtrados = animales.filter(a => {
     const matchEstado = filtroEstado === "Todos" || a.estado === filtroEstado;

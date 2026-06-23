@@ -59,10 +59,21 @@ madre_id: ""
           : undefined),
     };
     console.log("GUARDANDO ANIMAL", data);
-    if (animal?.id) await base44.entities.Animal.update(animal.id, data);
-    else await base44.entities.Animal.create(data);
+
+    let result;
+
+    if (animal?.id) {
+      result = await base44.entities.Animal.update(animal.id, data);
+    } else {
+      result = await base44.entities.Animal.create(data);
+    }
+
     setLoading(false);
-    onSave();
+
+    onSave({
+      ...data,
+      id: animal?.id || result?.id,
+    });
   };
 
   return (
