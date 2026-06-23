@@ -8,8 +8,16 @@
     },
     "numero_id": {
       "type": "string",
-      "description": "N\u00famero de identificaci\u00f3n / Arete"
+      "description": "ID oficial del animal"
     },
+    "arete": {
+  "type": "string",
+  "description": "Número de arete del animal"
+},
+"numero_registro": {
+  "type": "string",
+  "description": "Número de registro del animal"
+},
     "raza": {
       "type": "string",
       "enum": [
