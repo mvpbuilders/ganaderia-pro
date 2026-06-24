@@ -94,6 +94,7 @@ if (animalDetalle) {
         <AnimalModal
           animal={animalEditar}
           fincaId={fincaId}
+           animales={animales}
           onClose={() => setShowModal(false)}
           onSave={handleSave}
         />
@@ -263,6 +264,7 @@ if (animalDetalle) {
         <AnimalModal
           animal={animalEditar}
           fincaId={fincaId}
+           animales={animales}
           onClose={() => setShowModal(false)}
           onSave={handleSave}
         />

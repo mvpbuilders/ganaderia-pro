@@ -10,7 +10,7 @@ const RAZAS = ["Holstein", "Jersey", "Brown Swiss", "Montbeliarde", "Mestiza", "
 const ESTADOS = ["Ordeño", "Seca", "Preparto", "Ternera", "Vacona", "Enfermería", "Vendida", "Muerta"];
 const ESTADOS_REPRO = ["Abierta", "En celo", "Inseminada", "Pendiente chequeo", "Preñada positiva", "Negativa", "Dudosa", "Aborto"];
 
-export default function AnimalModal({ animal, fincaId, onClose, onSave }) {
+export default function AnimalModal({ animal, fincaId, animales = [], onClose, onSave }) {
   const [form, setForm] = useState(animal ? {
     ...animal,
     raza: animal.raza || "Holstein",
@@ -41,9 +41,33 @@ madre_id: "",
   });
   const [loading, setLoading] = useState(false);
 
-  const set = (field, val) => setForm(f => ({ ...f, [field]: val }));
+ 
+const set = (field, val) => setForm(f => ({ ...f, [field]: val }));
 
-  const handleSave = async () => {
+const animalesDisponibles = animales.filter(a => a.id !== animal?.id);
+
+const seleccionarPadre = (animalPadreId) => {
+  const seleccionado = animalesDisponibles.find(a => a.id === animalPadreId);
+
+  setForm(f => ({
+    ...f,
+    padre_id: seleccionado?.numero_id || seleccionado?.id || "",
+    padre_nombre: seleccionado?.nombre || "",
+  }));
+};
+
+const seleccionarMadre = (animalMadreId) => {
+  const seleccionado = animalesDisponibles.find(a => a.id === animalMadreId);
+
+  setForm(f => ({
+    ...f,
+    madre_id: seleccionado?.numero_id || seleccionado?.id || "",
+    madre_nombre: seleccionado?.nombre || "",
+  }));
+};
+
+const handleSave = async () => {
+
     if (!form.nombre) return;
     setLoading(true);
     const am = form.produccion_am ? Number(form.produccion_am) : undefined;
@@ -60,16 +84,15 @@ madre_id: "",
           ? Number(form.produccion_diaria_litros)
           : undefined),
     };
-      console.log("GUARDANDO ANIMAL", data);
-
+      
       let result;
 
      if (animal?.id) {
         result = await base44.entities.Animal.update(animal.id, data);
-        console.log("RESULTADO UPDATE", result);
+       
       } else {
         result = await base44.entities.Animal.create(data);
-        console.log("RESULTADO CREATE", result);
+        
       }
 
       setLoading(false);
@@ -206,42 +229,62 @@ madre_id: "",
           </div>
 
          {/* Pedigree */}
-<p className="text-xs font-bold text-muted-foreground uppercase tracking-wide pt-2">Pedigree</p>
+
 <div className="grid grid-cols-2 gap-3">
   <div>
-    <Label className="text-xs font-semibold mb-1.5 block">Nombre del Padre</Label>
-    <Input
-      value={form.padre_nombre || ""}
-      onChange={e => set("padre_nombre", e.target.value)}
-      placeholder="Ej: Campeón 5"
-    />
+    <Label className="text-xs font-semibold mb-1.5 block">Padre</Label>
+    <Select
+      value={animalesDisponibles.find(a =>
+        a.numero_id === form.padre_id ||
+        a.id === form.padre_id ||
+        a.nombre === form.padre_nombre
+      )?.id || ""}
+      onValueChange={seleccionarPadre}
+    >
+      <SelectTrigger>
+        <SelectValue placeholder="Seleccionar padre" />
+      </SelectTrigger>
+      <SelectContent>
+        {animalesDisponibles.map(a => (
+          <SelectItem key={a.id} value={a.id}>
+            {a.nombre} {a.numero_id ? `(${a.numero_id})` : ""}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   </div>
 
   <div>
-    <Label className="text-xs font-semibold mb-1.5 block">ID del Padre</Label>
-    <Input
-      value={form.padre_id || ""}
-      onChange={e => set("padre_id", e.target.value)}
-      placeholder="TORO-001"
-    />
+    <Label className="text-xs font-semibold mb-1.5 block">ID Padre</Label>
+    <Input value={form.padre_id || ""} readOnly />
   </div>
 
   <div>
-    <Label className="text-xs font-semibold mb-1.5 block">Nombre de la Madre</Label>
-    <Input
-      value={form.madre_nombre || ""}
-      onChange={e => set("madre_nombre", e.target.value)}
-      placeholder="Ej: Luli"
-    />
+    <Label className="text-xs font-semibold mb-1.5 block">Madre</Label>
+    <Select
+      value={animalesDisponibles.find(a =>
+        a.numero_id === form.madre_id ||
+        a.id === form.madre_id ||
+        a.nombre === form.madre_nombre
+      )?.id || ""}
+      onValueChange={seleccionarMadre}
+    >
+      <SelectTrigger>
+        <SelectValue placeholder="Seleccionar madre" />
+      </SelectTrigger>
+      <SelectContent>
+        {animalesDisponibles.map(a => (
+          <SelectItem key={a.id} value={a.id}>
+            {a.nombre} {a.numero_id ? `(${a.numero_id})` : ""}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   </div>
 
   <div>
-    <Label className="text-xs font-semibold mb-1.5 block">ID de la Madre</Label>
-    <Input
-      value={form.madre_id || ""}
-      onChange={e => set("madre_id", e.target.value)}
-      placeholder="OK-0002"
-    />
+    <Label className="text-xs font-semibold mb-1.5 block">ID Madre</Label>
+    <Input value={form.madre_id || ""} readOnly />
   </div>
 </div>
 

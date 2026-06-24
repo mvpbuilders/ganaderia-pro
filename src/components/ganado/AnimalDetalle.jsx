@@ -11,9 +11,9 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 const TABS = ["General", "Registro Lechero", "Reproducción", "Salud", "Agrupamiento", "Pedigrí"];
 
 export default function AnimalDetalle({ animal, onBack, onEdit, onSelectAnimal }) {
-  const [tab, setTab] = useState("General");
-  const [showEventoModal, setShowEventoModal] = useState(false);
 
+  const [showEventoModal, setShowEventoModal] = useState(false);
+  const [tab, setTab] = useState("General");
   const fincaId = animal?.finca_id;
 
   const { data: eventos = [], refetch: refetchEventos } = useQuery({
@@ -66,19 +66,6 @@ const padre = buscarAnimal(animal.padre_id);
 const madre = buscarAnimal(animal.madre_id);
 
 
-console.log("PEDIGRI MATCH", {
-  animal: animal.nombre,
-  padre_id: animal.padre_id,
-  madre_id: animal.madre_id,
-  padre_encontrado: padre,
-  madre_encontrada: madre,
-  animales_disponibles: animalesFinca.map(a => ({
-    nombre: a.nombre,
-    numero_id: a.numero_id,
-    arete: a.arete,
-  })),
-});
-
 const abueloPaterno = buscarAnimal(padre?.padre_id);
 const abuelaPaterna = buscarAnimal(padre?.madre_id);
 const abueloMaterno = buscarAnimal(madre?.padre_id);
@@ -112,13 +99,6 @@ const hijos = animalesFinca.filter(a =>
     Tratamiento: "💊", Vacuna: "💉", Enfermedad: "🤒", "Cambio de grupo": "👥",
     Produccion: "🥛", Muerte: "💀", Venta: "💰", Destete: "🍼"
   };
-
-  console.log("RENDER ANIMAL DETALLE", {
-  id: animal.id,
-  nombre: animal.nombre,
-  arete: animal.arete,
-  numero_registro: animal.numero_registro,
-});
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -394,23 +374,33 @@ const hijos = animalesFinca.filter(a =>
         </div>
 
         <div className="space-y-3">
-          <div
-            className={`bg-blue-50 rounded-xl p-4 ${
-              padre ? "cursor-pointer hover:ring-2 hover:ring-primary/30" : ""
-            }`}
-            onClick={() => padre && onSelectAnimal?.(padre)}
-          >
+<div
+  className={`bg-blue-50 rounded-xl p-4 ${
+    padre ? "cursor-pointer hover:ring-2 hover:ring-primary/30" : ""
+  }`}
+  onClick={() => {
+    if (padre) {
+      setTab("General");
+      onSelectAnimal?.(padre);
+    }
+  }}
+>
             <p className="text-xs text-muted-foreground mb-1">Padre</p>
             <p className="font-bold text-foreground">{padre?.nombre || animal.padre_nombre || "-"}</p>
             <p className="text-xs text-muted-foreground">{padre?.numero_id || animal.padre_id || "-"}</p>
           </div>
 
             <div
-              className={`bg-pink-50 rounded-xl p-4 ${
-                madre ? "cursor-pointer hover:ring-2 hover:ring-primary/30" : ""
-              }`}
-              onClick={() => madre && onSelectAnimal?.(madre)}
-            >
+  className={`bg-pink-50 rounded-xl p-4 ${
+    madre ? "cursor-pointer hover:ring-2 hover:ring-primary/30" : ""
+  }`}
+  onClick={() => {
+    if (madre) {
+      setTab("General");
+      onSelectAnimal?.(madre);
+    }
+  }}
+>
               <p className="text-xs text-muted-foreground mb-1">Madre</p>
               <p className="font-bold text-foreground">
                 {madre?.nombre || animal.madre_nombre || animal.madre_id || "-"}
