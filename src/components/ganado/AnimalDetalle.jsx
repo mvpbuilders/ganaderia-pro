@@ -65,6 +65,20 @@ const buscarAnimal = (id) => {
 const padre = buscarAnimal(animal.padre_id);
 const madre = buscarAnimal(animal.madre_id);
 
+
+console.log("PEDIGRI MATCH", {
+  animal: animal.nombre,
+  padre_id: animal.padre_id,
+  madre_id: animal.madre_id,
+  padre_encontrado: padre,
+  madre_encontrada: madre,
+  animales_disponibles: animalesFinca.map(a => ({
+    nombre: a.nombre,
+    numero_id: a.numero_id,
+    arete: a.arete,
+  })),
+});
+
 const abueloPaterno = buscarAnimal(padre?.padre_id);
 const abuelaPaterna = buscarAnimal(padre?.madre_id);
 const abueloMaterno = buscarAnimal(madre?.padre_id);
