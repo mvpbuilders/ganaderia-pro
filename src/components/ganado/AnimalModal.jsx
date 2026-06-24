@@ -60,23 +60,25 @@ madre_id: "",
           ? Number(form.produccion_diaria_litros)
           : undefined),
     };
-    console.log("GUARDANDO ANIMAL", data);
+      console.log("GUARDANDO ANIMAL", data);
 
-    let result;
+      let result;
 
-    if (animal?.id) {
-      result = await base44.entities.Animal.update(animal.id, data);
-    } else {
-      result = await base44.entities.Animal.create(data);
-    }
+     if (animal?.id) {
+        result = await base44.entities.Animal.update(animal.id, data);
+        console.log("RESULTADO UPDATE", result);
+      } else {
+        result = await base44.entities.Animal.create(data);
+        console.log("RESULTADO CREATE", result);
+      }
 
-    setLoading(false);
+      setLoading(false);
 
     onSave({
       ...data,
       id: animal?.id || result?.id,
     });
-  };
+};
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">

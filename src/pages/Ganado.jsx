@@ -51,9 +51,12 @@ export default function Ganado() {
     setShowModal(false);
     setAnimalEditar(null);
 
-    if (animalDetalle?.id && animalActualizado?.id === animalDetalle.id) {
-      setAnimalDetalle(animalActualizado);
-    }
+      if (animalDetalle?.id && animalActualizado?.id === animalDetalle.id) {
+    setAnimalDetalle(prev => ({
+      ...prev,
+      ...animalActualizado,
+    }));
+}
   };
 
   const filtrados = animales.filter(a => {
@@ -84,6 +87,7 @@ if (animalDetalle) {
         animal={animalDetalle}
         onBack={() => setAnimalDetalle(null)}
         onEdit={() => { setAnimalEditar(animalDetalle); setShowModal(true); }}
+        onSelectAnimal={(animalSeleccionado) => setAnimalDetalle(animalSeleccionado)}
       />
 
       {showModal && (

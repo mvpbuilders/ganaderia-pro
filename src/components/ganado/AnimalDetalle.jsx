@@ -10,7 +10,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 
 const TABS = ["General", "Registro Lechero", "Reproducción", "Salud", "Agrupamiento", "Pedigrí"];
 
-export default function AnimalDetalle({ animal, onBack, onEdit }) {
+export default function AnimalDetalle({ animal, onBack, onEdit, onSelectAnimal }) {
   const [tab, setTab] = useState("General");
   const [showEventoModal, setShowEventoModal] = useState(false);
 
@@ -380,19 +380,32 @@ const hijos = animalesFinca.filter(a =>
         </div>
 
         <div className="space-y-3">
-          <div className="bg-blue-50 rounded-xl p-4">
+          <div
+            className={`bg-blue-50 rounded-xl p-4 ${
+              padre ? "cursor-pointer hover:ring-2 hover:ring-primary/30" : ""
+            }`}
+            onClick={() => padre && onSelectAnimal?.(padre)}
+          >
             <p className="text-xs text-muted-foreground mb-1">Padre</p>
             <p className="font-bold text-foreground">{padre?.nombre || animal.padre_nombre || "-"}</p>
             <p className="text-xs text-muted-foreground">{padre?.numero_id || animal.padre_id || "-"}</p>
           </div>
 
-          <div className="bg-pink-50 rounded-xl p-4">
-            <p className="text-xs text-muted-foreground mb-1">Madre</p>
-            <p className="font-bold text-foreground">{madre?.nombre || animal.madre_nombre || "-"}</p>
-            <p className="text-xs text-muted-foreground">{madre?.numero_id || animal.madre_id || "-"}</p>
-          </div>
+            <div
+              className={`bg-pink-50 rounded-xl p-4 ${
+                madre ? "cursor-pointer hover:ring-2 hover:ring-primary/30" : ""
+              }`}
+              onClick={() => madre && onSelectAnimal?.(madre)}
+            >
+              <p className="text-xs text-muted-foreground mb-1">Madre</p>
+              <p className="font-bold text-foreground">
+                {madre?.nombre || animal.madre_nombre || animal.madre_id || "-"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {madre?.numero_id || animal.madre_id || "-"}
+              </p>
+            </div>
         </div>
-
         <div className="grid grid-cols-1 gap-3">
           <div className="bg-blue-50/60 rounded-xl p-3">
             <p className="text-xs text-muted-foreground">Abuelo paterno</p>
