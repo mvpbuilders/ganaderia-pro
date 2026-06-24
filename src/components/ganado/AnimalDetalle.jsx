@@ -8,7 +8,7 @@ import { ChevronLeft, Plus, Milk, Heart, Weight, Users, Calendar, AlertTriangle 
 import { Button } from "@/components/ui/button";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
-const TABS = ["General", "Registro Lechero", "Reproducción", "Salud", "Agrupamiento"];
+const TABS = ["General", "Registro Lechero", "Reproducción", "Salud", "Agrupamiento", "Pedigrí"];
 
 export default function AnimalDetalle({ animal, onBack, onEdit }) {
   const [tab, setTab] = useState("General");
@@ -38,7 +38,7 @@ export default function AnimalDetalle({ animal, onBack, onEdit }) {
 
 const { data: animalesFinca = [] } = useQuery({
   queryKey: ['animales-finca', fincaId],
-  enabled: !!fincaId && !!animal?.madre_id,
+  enabled: !!fincaId && !!animal?.id,
   queryFn: () => base44.entities.Animal.filter(
     { finca_id: fincaId },
     '-created_date',
@@ -47,6 +47,35 @@ const { data: animalesFinca = [] } = useQuery({
 });
 
 const madreDisplay = animal.madre_nombre || "-";
+
+const buscarAnimal = (id) => {
+  if (!id) return null;
+  const valor = String(id).trim().toLowerCase();
+
+  return animalesFinca.find(a =>
+    String(a.id || "").trim().toLowerCase() === valor ||
+    String(a.numero_id || "").trim().toLowerCase() === valor ||
+    String(a.arete || "").trim().toLowerCase() === valor ||
+    String(a.numero_registro || "").trim().toLowerCase() === valor ||
+    String(a.nombre || "").trim().toLowerCase() === valor
+  ) || null;
+};
+
+
+const padre = buscarAnimal(animal.padre_id);
+const madre = buscarAnimal(animal.madre_id);
+
+const abueloPaterno = buscarAnimal(padre?.padre_id);
+const abuelaPaterna = buscarAnimal(padre?.madre_id);
+const abueloMaterno = buscarAnimal(madre?.padre_id);
+const abuelaMaterna = buscarAnimal(madre?.madre_id);
+
+const hijos = animalesFinca.filter(a =>
+  a.padre_id === animal.id ||
+  a.madre_id === animal.id ||
+  a.padre_id === animal.numero_id ||
+  a.madre_id === animal.numero_id
+);
 
   const hoy = new Date().toISOString().split('T')[0];
   const enRetiro = animal.retiro_leche_hasta && animal.retiro_leche_hasta >= hoy;
@@ -338,6 +367,75 @@ const madreDisplay = animal.madre_nombre || "-";
         </div>
       )}
 
+{tab === "Pedigrí" && (
+  <div className="space-y-4">
+    <div className="bg-card rounded-xl border border-border p-5">
+      <h3 className="font-semibold text-foreground mb-4">Árbol genealógico</h3>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start text-sm">
+        <div className="bg-secondary/40 rounded-xl p-4 text-center">
+          <p className="text-xs text-muted-foreground mb-1">Animal</p>
+          <p className="font-bold text-foreground">{animal.nombre}</p>
+          <p className="text-xs text-muted-foreground">{animal.numero_id || "-"}</p>
+        </div>
+
+        <div className="space-y-3">
+          <div className="bg-blue-50 rounded-xl p-4">
+            <p className="text-xs text-muted-foreground mb-1">Padre</p>
+            <p className="font-bold text-foreground">{padre?.nombre || animal.padre_nombre || "-"}</p>
+            <p className="text-xs text-muted-foreground">{padre?.numero_id || animal.padre_id || "-"}</p>
+          </div>
+
+          <div className="bg-pink-50 rounded-xl p-4">
+            <p className="text-xs text-muted-foreground mb-1">Madre</p>
+            <p className="font-bold text-foreground">{madre?.nombre || animal.madre_nombre || "-"}</p>
+            <p className="text-xs text-muted-foreground">{madre?.numero_id || animal.madre_id || "-"}</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3">
+          <div className="bg-blue-50/60 rounded-xl p-3">
+            <p className="text-xs text-muted-foreground">Abuelo paterno</p>
+            <p className="font-semibold">{abueloPaterno?.nombre || "-"}</p>
+          </div>
+          <div className="bg-pink-50/60 rounded-xl p-3">
+            <p className="text-xs text-muted-foreground">Abuela paterna</p>
+            <p className="font-semibold">{abuelaPaterna?.nombre || "-"}</p>
+          </div>
+          <div className="bg-blue-50/60 rounded-xl p-3">
+            <p className="text-xs text-muted-foreground">Abuelo materno</p>
+            <p className="font-semibold">{abueloMaterno?.nombre || "-"}</p>
+          </div>
+          <div className="bg-pink-50/60 rounded-xl p-3">
+            <p className="text-xs text-muted-foreground">Abuela materna</p>
+            <p className="font-semibold">{abuelaMaterna?.nombre || "-"}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div className="bg-card rounded-xl border border-border overflow-hidden">
+      <div className="p-4 border-b border-border">
+        <h3 className="font-semibold text-foreground">Hijos/as</h3>
+      </div>
+
+      {hijos.length === 0 ? (
+        <p className="text-center text-muted-foreground py-6 text-sm">Sin hijos registrados</p>
+      ) : (
+        <div className="divide-y divide-border">
+          {hijos.map(hijo => (
+            <div key={hijo.id} className="px-4 py-3">
+              <p className="text-sm font-semibold text-foreground">{hijo.nombre}</p>
+              <p className="text-xs text-muted-foreground">
+                {hijo.numero_id || "-"} · {hijo.raza || "-"} · {calcularEdad(hijo.fecha_nacimiento)}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+)}
       {showEventoModal && (
         <EventoRapidoModal
           animal={animal}
