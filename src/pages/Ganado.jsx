@@ -17,6 +17,7 @@ const FILTROS = [
   { key: "Preparto", label: "Preparto" },
   { key: "Ternera", label: "Terneras" },
   { key: "Vacona", label: "Vaconas" },
+  { key: "Toro", label: "Toros" },
   { key: "Enfermería", label: "Enfermería" },
   { key: "Vendida", label: "Vendidas" },
   { key: "Muerta", label: "Muertas" },

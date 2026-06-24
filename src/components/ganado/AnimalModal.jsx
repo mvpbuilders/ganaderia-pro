@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { X } from "lucide-react";
 
 const RAZAS = ["Holstein", "Jersey", "Brown Swiss", "Montbeliarde", "Mestiza", "Otra"];
-const ESTADOS = ["Ordeño", "Seca", "Preparto", "Ternera", "Vacona", "Enfermería", "Vendida", "Muerta"];
+const ESTADOS = ["Ordeño", "Seca", "Preparto", "Ternera", "Vacona", "Toro", "Enfermería", "Vendida", "Muerta"];
 const ESTADOS_REPRO = ["Abierta", "En celo", "Inseminada", "Pendiente chequeo", "Preñada positiva", "Negativa", "Dudosa", "Aborto"];
 
 export default function AnimalModal({ animal, fincaId, animales = [], onClose, onSave }) {
