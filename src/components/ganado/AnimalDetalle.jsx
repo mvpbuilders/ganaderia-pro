@@ -112,7 +112,19 @@ const hijos = animalesFinca.filter(a =>
             <h1 className="text-2xl font-bold text-foreground">{animal.nombre}</h1>
             {animal.numero_id && <span className="text-sm text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">{animal.numero_id}</span>}
             <EstadoBadge estado={animal.estado} size="md" />
-            {animal.estado_reproductivo && <EstadoBadge estado={animal.estado_reproductivo} type="reproductivo" size="sm" />}
+            {animal.estado === "Toro" ? (
+  animal.tipo_toro && (
+    <EstadoBadge
+      estado={animal.tipo_toro === "en_explotacion" ? "En explotación" : "Solo genética"}
+      type="reproductivo"
+      size="sm"
+    />
+  )
+) : (
+  animal.estado_reproductivo && (
+    <EstadoBadge estado={animal.estado_reproductivo} type="reproductivo" size="sm" />
+  )
+)}
           </div>
           <p className="text-muted-foreground text-sm mt-0.5">{animal.raza} · {calcularEdad(animal.fecha_nacimiento)}</p>
         </div>
@@ -278,7 +290,17 @@ const hijos = animalesFinca.filter(a =>
         <div className="space-y-3">
           <div className="bg-card rounded-xl border border-border p-5">
             <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2"><Heart className="w-4 h-4" />Estado reproductivo actual</h3>
-            <EstadoBadge estado={animal.estado_reproductivo || "Abierta"} type="reproductivo" size="md" />
+            <EstadoBadge
+  estado={
+    animal.estado === "Toro"
+      ? animal.tipo_toro === "en_explotacion"
+        ? "En explotación"
+        : "Solo genética"
+      : animal.estado_reproductivo || "Abierta"
+  }
+  type="reproductivo"
+  size="md"
+/>
           </div>
           <div className="bg-card rounded-xl border border-border overflow-hidden">
             <div className="p-4 border-b border-border"><h3 className="font-semibold text-foreground">Timeline reproductivo</h3></div>

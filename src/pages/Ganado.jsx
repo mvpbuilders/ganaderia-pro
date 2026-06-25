@@ -207,7 +207,22 @@ if (animalDetalle) {
                       <td className="px-4 py-3 text-sm text-muted-foreground">{calcularEdad(animal.fecha_nacimiento)}</td>
                       <td className="px-4 py-3"><EstadoBadge estado={animal.estado} /></td>
                       <td className="px-4 py-3">
-                        {animal.estado_reproductivo ? <EstadoBadge estado={animal.estado_reproductivo} type="reproductivo" /> : <span className="text-muted-foreground text-xs">-</span>}
+                      {animal.estado === "Toro" ? (
+  animal.tipo_toro ? (
+    <EstadoBadge
+      estado={animal.tipo_toro === "en_explotacion" ? "En explotación" : "Solo genética"}
+      type="reproductivo"
+    />
+  ) : (
+    <span className="text-muted-foreground text-xs">-</span>
+  )
+) : (
+  animal.estado_reproductivo ? (
+    <EstadoBadge estado={animal.estado_reproductivo} type="reproductivo" />
+  ) : (
+    <span className="text-muted-foreground text-xs">-</span>
+  )
+)}
                       </td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">{animal.grupo || '-'}</td>
                       <td className="px-4 py-3 text-right">

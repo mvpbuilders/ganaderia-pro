@@ -16,6 +16,7 @@ export default function AnimalModal({ animal, fincaId, animales = [], onClose, o
     raza: animal.raza || "Holstein",
     sexo: animal.sexo || "Hembra",
     estado: animal.estado || "Ordeño",
+    tipo_toro: animal.tipo_toro || "",
     estado_reproductivo: animal.estado_reproductivo || "Abierta",
   } : {
 nombre: "",
@@ -26,6 +27,7 @@ raza: "Holstein",
 fecha_nacimiento: "",
 sexo: "Hembra",
 estado: "Ordeño",
+tipo_toro: "",
 estado_reproductivo: "Abierta",
 grupo: "",
 peso_kg: "",
@@ -162,20 +164,80 @@ const handleSave = async () => {
           {/* Estado */}
           <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide pt-2">Estado</p>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="text-xs font-semibold mb-1.5 block">Estado productivo</Label>
-              <Select value={form.estado} onValueChange={v => set("estado", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{ESTADOS.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-xs font-semibold mb-1.5 block">Estado reproductivo</Label>
-              <Select value={form.estado_reproductivo} onValueChange={v => set("estado_reproductivo", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{ESTADOS_REPRO.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
+
+<div>
+  <Label className="text-xs font-semibold mb-1.5 block">
+    Estado productivo
+  </Label>
+
+  <Select value={form.estado} onValueChange={v => set("estado", v)}>
+    <SelectTrigger>
+      <SelectValue />
+    </SelectTrigger>
+
+    <SelectContent>
+      {ESTADOS.map(e => (
+        <SelectItem key={e} value={e}>
+          {e}
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+</div>
+
+<div>
+  {form.estado === "Toro" ? (
+    <>
+      <Label className="text-xs font-semibold mb-1.5 block">
+        Tipo de Toro
+      </Label>
+
+      <Select
+        value={form.tipo_toro || ""}
+        onValueChange={v => set("tipo_toro", v)}
+      >
+        <SelectTrigger>
+          <SelectValue placeholder="Seleccionar tipo" />
+        </SelectTrigger>
+
+        <SelectContent>
+          <SelectItem value="en_explotacion">
+            En explotación
+          </SelectItem>
+
+          <SelectItem value="solo_genetica">
+            Solo genética (IA)
+          </SelectItem>
+        </SelectContent>
+      </Select>
+    </>
+  ) : (
+    <>
+      <Label className="text-xs font-semibold mb-1.5 block">
+        Estado reproductivo
+      </Label>
+
+      <Select
+        value={form.estado_reproductivo}
+        onValueChange={v => set("estado_reproductivo", v)}
+      >
+        <SelectTrigger>
+          <SelectValue />
+        </SelectTrigger>
+
+        <SelectContent>
+          {ESTADOS_REPRO.map(e => (
+            <SelectItem key={e} value={e}>
+              {e}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </>
+  )}
+</div>
+
+
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
