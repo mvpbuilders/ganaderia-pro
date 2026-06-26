@@ -1,20 +1,56 @@
 import { apiClient } from "./apiClient";
 
+export const ANIMALS_QUERY_KEY = ["animals"];
+
+const DECIMAL_FIELDS = [
+  "peso_kg",
+  "produccion_diaria_litros",
+  "produccion_am",
+  "produccion_pm",
+];
+
+function toNumberOrOriginal(value) {
+  if (value === null || value === undefined || value === "") return value;
+
+  const number = Number(value);
+  return Number.isNaN(number) ? value : number;
+}
+
+function normalizeAnimal(animal) {
+  if (!animal) return animal;
+
+  return DECIMAL_FIELDS.reduce(
+    (normalized, field) => ({
+      ...normalized,
+      [field]: toNumberOrOriginal(normalized[field]),
+    }),
+    { ...animal }
+  );
+}
+
+function normalizeAnimals(animals) {
+  return Array.isArray(animals) ? animals.map(normalizeAnimal) : animals;
+}
+
 export const animalService = {
-  list() {
-    return apiClient.get("/api/animals");
+  async list() {
+    const animals = await apiClient.get("/api/animals");
+    return normalizeAnimals(animals);
   },
 
-  get(id) {
-    return apiClient.get(`/api/animals/${id}`);
+  async get(id) {
+    const animal = await apiClient.get(`/api/animals/${id}`);
+    return normalizeAnimal(animal);
   },
 
-  create(data) {
-    return apiClient.post("/api/animals", data);
+  async create(data) {
+    const animal = await apiClient.post("/api/animals", data);
+    return normalizeAnimal(animal);
   },
 
-  update(id, data) {
-    return apiClient.patch(`/api/animals/${id}`, data);
+  async update(id, data) {
+    const animal = await apiClient.patch(`/api/animals/${id}`, data);
+    return normalizeAnimal(animal);
   },
 
   destroy(id) {

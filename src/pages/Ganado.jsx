@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { ANIMALS_QUERY_KEY, animalService } from "@/services/animalService";
 import { formatDate, calcularEdad } from "@/lib/utils";
 import EstadoBadge from "@/components/shared/EstadoBadge";
 import { Search, Plus, Eye, Edit, Milk, AlertTriangle } from "lucide-react";
@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import AnimalModal from "@/components/ganado/AnimalModal";
 import AnimalDetalle from "@/components/ganado/AnimalDetalle";
-import { getCurrentFinca } from "@/lib/current-finca";
 
 const FILTROS = [
   { key: "Todos", label: "Todos" },
@@ -33,21 +32,13 @@ export default function Ganado() {
   const queryClient = useQueryClient();
   const hoy = new Date().toISOString().split('T')[0];
 
-  const { data: fincaData } = useQuery({
-    queryKey: ['current-finca'],
-    queryFn: getCurrentFinca,
-  });
-
-  const fincaId = fincaData?.finca?.id;
-
   const { data: animales = [], isLoading } = useQuery({
-    queryKey: ['animales', fincaId],
-    enabled: !!fincaId,
-    queryFn: () => base44.entities.Animal.filter({ finca_id: fincaId }, '-created_date', 500),
+    queryKey: ANIMALS_QUERY_KEY,
+    queryFn: animalService.list,
   });
 
   const handleSave = async (animalActualizado) => {
-    await queryClient.invalidateQueries({ queryKey: ['animales', fincaId] });
+    await queryClient.invalidateQueries({ queryKey: ANIMALS_QUERY_KEY });
 
     setShowModal(false);
     setAnimalEditar(null);
@@ -94,7 +85,6 @@ if (animalDetalle) {
       {showModal && (
         <AnimalModal
           animal={animalEditar}
-          fincaId={fincaId}
            animales={animales}
           onClose={() => setShowModal(false)}
           onSave={handleSave}
@@ -279,7 +269,6 @@ if (animalDetalle) {
       {showModal && (
         <AnimalModal
           animal={animalEditar}
-          fincaId={fincaId}
            animales={animales}
           onClose={() => setShowModal(false)}
           onSave={handleSave}

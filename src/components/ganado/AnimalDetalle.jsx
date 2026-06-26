@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { ANIMALS_QUERY_KEY, animalService } from "@/services/animalService";
 import { formatDate, calcularEdad } from "@/lib/utils";
 import EstadoBadge from "@/components/shared/EstadoBadge";
 import EventoRapidoModal from "@/components/ganado/EventoRapidoModal";
@@ -37,13 +38,9 @@ export default function AnimalDetalle({ animal, onBack, onEdit, onSelectAnimal }
   });
 
 const { data: animalesFinca = [] } = useQuery({
-  queryKey: ['animales-finca', fincaId],
-  enabled: !!fincaId && !!animal?.id,
-  queryFn: () => base44.entities.Animal.filter(
-    { finca_id: fincaId },
-    '-created_date',
-    500
-  ),
+  queryKey: ANIMALS_QUERY_KEY,
+  enabled: !!animal?.id,
+  queryFn: animalService.list,
 });
 
 const madreDisplay = animal.madre_nombre || "-";
