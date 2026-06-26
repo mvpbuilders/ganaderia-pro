@@ -65,7 +65,9 @@ export default function InventarioIA() {
   };
 
   const handleToroChange = (animalId) => {
-    const toro = toros.find((t) => t.id === animalId);
+    // El <Select> devuelve strings y los ids de Rails son números:
+    // se compara con coerción a string para encontrar el toro.
+    const toro = toros.find((t) => String(t.id) === String(animalId));
 
     setForm((prev) => ({
       ...prev,
@@ -277,7 +279,7 @@ export default function InventarioIA() {
                     </SelectTrigger>
                     <SelectContent>
                       {toros.map((toro) => (
-                        <SelectItem key={toro.id} value={toro.id}>
+                        <SelectItem key={toro.id} value={String(toro.id)}>
                           {toro.nombre} ·{" "}
                           {toro.numero_id ||
                             toro.arete ||
