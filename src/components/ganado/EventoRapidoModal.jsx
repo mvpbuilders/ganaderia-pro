@@ -71,6 +71,21 @@ export default function EventoRapidoModal({ animal, onClose, onSave }) {
     setLoading(true);
 
     const today = form.fecha;
+    let numeroInseminacion = null;
+
+if (accion === "inseminacion") {
+  const inseminacionesPrevias = await base44.entities.Evento.filter(
+    {
+      finca_id: fincaId,
+      animal_id: animal.id,
+      tipo: "Inseminacion",
+    },
+    "-fecha",
+    500
+  );
+
+  numeroInseminacion = inseminacionesPrevias.length + 1;
+}
     const eventoData = {
       finca_id: fincaId,
       fecha: today,
@@ -109,6 +124,7 @@ export default function EventoRapidoModal({ animal, onClose, onSave }) {
 
   Object.assign(eventoData, {
     tipo: "Inseminacion",
+    numero_inseminacion: numeroInseminacion,
     veterinario: form.veterinario,
 
     inventario_ia_id: pajuelaSeleccionada.id,
