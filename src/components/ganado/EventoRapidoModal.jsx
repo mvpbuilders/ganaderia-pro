@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { eventoService, EVENTOS_QUERY_KEY } from "@/services/eventoService";
+import { inventarioIAService, INVENTARIO_IA_QUERY_KEY } from "@/services/inventarioIAService";
+import { ANIMALS_QUERY_KEY } from "@/services/animalService";
 import { getCurrentFinca } from "@/lib/current-finca";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +42,7 @@ export default function EventoRapidoModal({ animal, onClose, onSave }) {
 
   const [loading, setLoading] = useState(false);
   const set = (f, v) => setForm((p) => ({ ...p, [f]: v }));
+  const queryClient = useQueryClient();
 
   const { data: fincaData } = useQuery({
     queryKey: ["current-finca"],
@@ -49,49 +52,38 @@ export default function EventoRapidoModal({ animal, onClose, onSave }) {
   const fincaId = fincaData?.finca?.id;
 
   const { data: inventarioIA = [] } = useQuery({
-    queryKey: ["inventario-ia-disponible", fincaId],
+    queryKey: [...INVENTARIO_IA_QUERY_KEY, "disponible"],
     enabled: !!fincaId,
-    queryFn: () =>
-      base44.entities.InventarioIA.filter(
-        { finca_id: fincaId },
-        "toro_nombre",
-        500
-      ),
+    queryFn: () => inventarioIAService.list({ disponibles: true }),
   });
 
   const pajuelasDisponibles = inventarioIA.filter(
     (item) => Number(item.stock_actual || 0) > 0
   );
 
+  // El <Select> devuelve siempre strings y los ids de Rails son números:
+  // se compara con coerción a string para que la selección matchee.
   const pajuelaSeleccionada = pajuelasDisponibles.find(
-    (item) => item.id === form.inventario_ia_id
+    (item) => String(item.id) === String(form.inventario_ia_id)
   );
 
   const handleSave = async () => {
+    // Validación de UX; el backend también valida y descuenta el stock de forma atómica.
+    if (accion === "inseminacion" && !pajuelaSeleccionada) {
+      toast.error("Seleccioná una pajuela disponible");
+      return;
+    }
+
     setLoading(true);
 
-    const today = form.fecha;
-    let numeroInseminacion = null;
-
-if (accion === "inseminacion") {
-  const inseminacionesPrevias = await base44.entities.Evento.filter(
-    {
-      finca_id: fincaId,
-      animal_id: animal.id,
-      tipo: "Inseminacion",
-    },
-    "-fecha",
-    500
-  );
-
-  numeroInseminacion = inseminacionesPrevias.length + 1;
-}
+    // Solo se envía el evento. La lógica de negocio (descuento de stock IA,
+    // numeración de inseminaciones, fechas reproductivas, retiro de leche,
+    // cambios de estado del animal) vive en el backend. Nunca se envía finca_id.
     const eventoData = {
-      finca_id: fincaId,
-      fecha: today,
+      fecha: form.fecha,
       animal_id: animal.id,
       animal_nombre: animal.nombre,
-      notas: form.notas,
+      notas: form.notas || null,
     };
 
     if (accion === "parto") {
@@ -99,137 +91,60 @@ if (accion === "inseminacion") {
         tipo: "Parto",
         sexo_cria: form.sexo_cria,
         nombre_cria: form.nombre_cria,
-        peso_cria: form.peso_cria ? Number(form.peso_cria) : undefined,
+        peso_cria: form.peso_cria ? Number(form.peso_cria) : null,
       });
-
-      await base44.entities.Animal.update(animal.id, {
-        fecha_ultimo_parto: today,
-        estado_reproductivo: "Abierta",
-        estado: "Ordeño",
+    } else if (accion === "inseminacion") {
+      Object.assign(eventoData, {
+        tipo: "Inseminacion",
+        veterinario: form.veterinario || null,
+        inventario_ia_id: pajuelaSeleccionada.id,
       });
-} else if (accion === "inseminacion") {
-  if (!pajuelaSeleccionada) {
-    toast.error("Seleccioná una pajuela disponible");
-    setLoading(false);
-    return;
-  }
-
-  const stockActual = Number(pajuelaSeleccionada.stock_actual || 0);
-
-  if (stockActual <= 0) {
-    toast.error("La pajuela seleccionada no tiene stock disponible");
-    setLoading(false);
-    return;
-  }
-
-  Object.assign(eventoData, {
-    tipo: "Inseminacion",
-    numero_inseminacion: numeroInseminacion,
-    veterinario: form.veterinario,
-
-    inventario_ia_id: pajuelaSeleccionada.id,
-    toro_id: pajuelaSeleccionada.toro_id,
-    toro_nombre: pajuelaSeleccionada.toro_nombre,
-    pajuela_proveedor: pajuelaSeleccionada.proveedor,
-    pajuela_sexada: pajuelaSeleccionada.sexada,
-    pajuela_canastilla: pajuelaSeleccionada.canastilla,
-  });
-
-  await base44.entities.InventarioIA.update(pajuelaSeleccionada.id, {
-    stock_actual: stockActual - 1,
-  });
-
-  const checkDate = new Date(today);
-  checkDate.setDate(checkDate.getDate() + 35);
-
-  await base44.entities.Animal.update(animal.id, {
-    estado_reproductivo: "Inseminada",
-    fecha_proximo_chequeo: checkDate.toISOString().split("T")[0],
-  });
-
     } else if (accion === "celo") {
       Object.assign(eventoData, { tipo: "Celo" });
-
-      await base44.entities.Animal.update(animal.id, {
-        estado_reproductivo: "En celo",
-      });
     } else if (accion === "chequeo") {
       Object.assign(eventoData, {
         tipo: "Chequeo veterinario",
-        veterinario: form.veterinario,
-        resultado: form.resultado,
+        veterinario: form.veterinario || null,
+        resultado: form.resultado || null,
       });
-
-      const updates = {
-        fecha_ultimo_chequeo: today,
-        estado_reproductivo: form.resultado || animal.estado_reproductivo,
-      };
-
-      if (form.resultado === "Preñada positiva") {
-        const partoDate = new Date(today);
-        partoDate.setDate(partoDate.getDate() + 210);
-
-        const secadoDate = new Date(today);
-        secadoDate.setDate(secadoDate.getDate() + 150);
-
-        updates.fecha_proxima_cria = partoDate.toISOString().split("T")[0];
-        updates.fecha_secado = secadoDate.toISOString().split("T")[0];
-      }
-
-      await base44.entities.Animal.update(animal.id, updates);
     } else if (accion === "tratamiento") {
-      const retiro = form.dias_retiro ? Number(form.dias_retiro) : 0;
-
       Object.assign(eventoData, {
         tipo: "Tratamiento",
-        medicamento: form.medicamento,
-        dosis: form.dosis,
-        veterinario: form.veterinario,
+        medicamento: form.medicamento || null,
+        dosis: form.dosis || null,
+        veterinario: form.veterinario || null,
         requiere_retiro_leche: form.requiere_retiro_leche,
-        dias_retiro: retiro,
+        dias_retiro: form.dias_retiro ? Number(form.dias_retiro) : 0,
       });
-
-      if (form.requiere_retiro_leche && retiro > 0) {
-        const retiroDate = new Date(today);
-        retiroDate.setDate(retiroDate.getDate() + retiro);
-
-        await base44.entities.Animal.update(animal.id, {
-          retiro_leche_hasta: retiroDate.toISOString().split("T")[0],
-          estado: "Enfermería",
-        });
-      }
     } else if (accion === "vacuna") {
       Object.assign(eventoData, {
         tipo: "Vacuna",
-        medicamento: form.medicamento,
-        veterinario: form.veterinario,
+        medicamento: form.medicamento || null,
+        veterinario: form.veterinario || null,
       });
     } else if (accion === "enfermedad") {
       Object.assign(eventoData, {
         tipo: "Enfermedad",
-        descripcion: form.notas,
-      });
-
-      await base44.entities.Animal.update(animal.id, {
-        estado: "Enfermería",
+        descripcion: form.notas || null,
       });
     } else if (accion === "grupo") {
       Object.assign(eventoData, {
         tipo: "Cambio de grupo",
-        grupo_anterior: animal.grupo,
-        grupo_nuevo: form.grupo_nuevo,
-      });
-
-      await base44.entities.Animal.update(animal.id, {
-        grupo: form.grupo_nuevo,
+        grupo_nuevo: form.grupo_nuevo || null,
       });
     }
 
-    await base44.entities.Evento.create(eventoData);
-
-    setLoading(false);
-    toast.success("Evento registrado correctamente");
-    onSave();
+    try {
+      await eventoService.create(eventoData);
+      queryClient.invalidateQueries({ queryKey: EVENTOS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ANIMALS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: INVENTARIO_IA_QUERY_KEY });
+      toast.success("Evento registrado correctamente");
+      onSave();
+    } catch (error) {
+      toast.error(error.message || "Error al registrar el evento");
+      setLoading(false);
+    }
   };
 
   if (!accion) {
@@ -379,7 +294,7 @@ if (accion === "inseminacion") {
 
                 <SelectContent>
                   {pajuelasDisponibles.map((item) => (
-                    <SelectItem key={item.id} value={item.id}>
+                    <SelectItem key={item.id} value={String(item.id)}>
                       {item.toro_nombre || "Toro sin nombre"} · Stock{" "}
                       {item.stock_actual}
                     </SelectItem>

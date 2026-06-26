@@ -1,8 +1,7 @@
-import { getCurrentFinca } from "@/lib/current-finca";
 import { useState } from "react";
-import { base44 } from "@/api/base44Client";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { dashboardService, DASHBOARD_QUERY_KEY } from "@/services/dashboardService";
 import { formatCurrency, formatNumber, getMonthName } from "@/lib/utils";
 import StatCard from "@/components/dashboard/StatCard";
 import AlertaCard from "@/components/dashboard/AlertaCard";
@@ -16,153 +15,40 @@ export default function Dashboard() {
   const [showAlertas, setShowAlertas] = useState(false);
   const [diaDetalle, setDiaDetalle] = useState(null);
 
-  const { data: fincaData } = useQuery({
-    queryKey: ['current-finca'],
-    queryFn: getCurrentFinca,
+  // Todos los cálculos viven en el backend; el frontend solo renderiza.
+  const { data: dashboard } = useQuery({
+    queryKey: DASHBOARD_QUERY_KEY,
+    queryFn: dashboardService.get,
   });
 
-  const fincaId = fincaData?.finca?.id;
+  const stats = dashboard?.stats || {};
+  const alertas = dashboard?.alertas || [];
+  const recentEventos = dashboard?.eventos_recientes || [];
 
-  const { data: animales = [], isLoading } = useQuery({
-    queryKey: ['animales', fincaId],
-    enabled: !!fincaId,
-    queryFn: () => base44.entities.Animal.filter({ finca_id: fincaId }, '-created_date', 500),
-  });
-
-  const { data: transacciones = [] } = useQuery({
-    queryKey: ['transacciones', fincaId],
-    enabled: !!fincaId,
-    queryFn: () => base44.entities.Transaccion.filter({ finca_id: fincaId }, '-fecha', 500),
-  });
-
-  const { data: eventos = [] } = useQuery({
-    queryKey: ['eventos', fincaId],
-    enabled: !!fincaId,
-    queryFn: () => base44.entities.Evento.filter({ finca_id: fincaId }, '-fecha', 100),
-  });
-
-  const { data: registrosLeche = [] } = useQuery({
-    queryKey: ['leche-reciente', fincaId],
-    enabled: !!fincaId,
-    queryFn: () => base44.entities.RegistroLeche.filter({ finca_id: fincaId }, '-fecha', 200),
-  });
-
-  const hoy = new Date().toISOString().split('T')[0];
-
-  const totalGanado = animales.filter(a => !["Vendida", "Muerta"].includes(a.estado)).length;
-  const vacasOrdenio = animales.filter(a => a.estado === 'Ordeño');
-  const vacasSecas = animales.filter(a => a.estado === 'Seca').length;
-  const vacasPreñadas = animales.filter(a => a.estado_reproductivo === 'Preñada positiva').length;
-  const vacasEnfermas = animales.filter(a => a.estado === 'Enfermería').length;
-  const enRetiro = animales.filter(a => a.retiro_leche_hasta && a.retiro_leche_hasta >= hoy).length;
-
-  const produccionHoy = registrosLeche
-    .filter(r => r.fecha === hoy && r.animal_id !== 'farm_total')
-    .reduce((s, r) => s + Number(r.total_litros || 0), 0);
-  const promedioPorVaca = vacasOrdenio.length > 0 ? (produccionHoy / vacasOrdenio.length).toFixed(1) : 0;
+  const totalGanado = stats.total_ganado || 0;
+  const vacasOrdenio = stats.vacas_ordenio || 0;
+  const vacasSecas = stats.vacas_secas || 0;
+  const vacasPreñadas = stats.vacas_prenadas || 0;
+  const vacasEnfermas = stats.vacas_enfermas || 0;
+  const produccionHoy = stats.produccion_hoy || 0;
+  const promedioPorVaca = stats.promedio_por_vaca || 0;
+  const ingresosMes = stats.ingresos_mes || 0;
+  const egresosMes = stats.egresos_mes || 0;
+  const gananciaMes = stats.ganancia_mes || 0;
 
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
-  const transaccionesMes = transacciones.filter(t => {
-    const d = new Date(t.fecha);
-    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-  });
-  const ingresosMes = transaccionesMes.filter(t => t.tipo === 'Ingreso').reduce((s, t) => s + (t.monto_usd || 0), 0);
-  const egresosMes = transaccionesMes.filter(t => t.tipo === 'Egreso').reduce((s, t) => s + (t.monto_usd || 0), 0);
-  const gananciaMes = ingresosMes - egresosMes;
 
-  // Farm-total records for charts
-  // Farm-total records for charts: sum all animal records by date
-  const farmTotalRecords = Object.values(
-    registrosLeche.reduce((acc, r) => {
-      if (!r.fecha) return acc;
+  const produccionChart = (dashboard?.produccion_chart || []).map((d) => ({
+    ...d,
+    dia: new Date(d.fecha + "T12:00:00").toLocaleDateString("es-EC", { weekday: "short", day: "numeric" }),
+  }));
 
-      if (!acc[r.fecha]) {
-        acc[r.fecha] = {
-          fecha: r.fecha,
-          litros_am: 0,
-          litros_pm: 0,
-          total_litros: 0,
-        };
-      }
+  const last6Months = dashboard?.finanzas_chart || [];
 
-      acc[r.fecha].litros_am += Number(r.litros_am || 0);
-      acc[r.fecha].litros_pm += Number(r.litros_pm || 0);
-      acc[r.fecha].total_litros += Number(r.total_litros || 0);
-
-      return acc;
-    }, {})
-  ).sort((a, b) => a.fecha.localeCompare(b.fecha));
-
-  // Last 14 days production - interpolate between known records
-  const last14Days = Array.from({ length: 14 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (13 - i));
-    return d.toISOString().split('T')[0];
-  });
-
-  const produccionChart = last14Days.map(date => {
-    const exact = farmTotalRecords.find(r => r.fecha === date);
-    // Interpolate if no exact match
-    const prev = [...farmTotalRecords].filter(r => r.fecha <= date).slice(-1)[0];
-    const next = farmTotalRecords.find(r => r.fecha >= date);
-    let litros = 0, am = 0, pm = 0;
-    if (exact) {
-      litros = exact.total_litros; am = exact.litros_am || 0; pm = exact.litros_pm || 0;
-    } else if (prev && next && prev.fecha !== next.fecha) {
-      const t1 = new Date(prev.fecha).getTime(), t2 = new Date(next.fecha).getTime(), tc = new Date(date).getTime();
-      const ratio = (tc - t1) / (t2 - t1);
-      litros = Math.round(prev.total_litros + (next.total_litros - prev.total_litros) * ratio);
-      am = Math.round((prev.litros_am || 0) + ((next.litros_am || 0) - (prev.litros_am || 0)) * ratio);
-      pm = Math.round((prev.litros_pm || 0) + ((next.litros_pm || 0) - (prev.litros_pm || 0)) * ratio);
-    } else if (prev) {
-      litros = prev.total_litros; am = prev.litros_am || 0; pm = prev.litros_pm || 0;
-    } else if (date === hoy && produccionHoy > 0) {
-      litros = produccionHoy;
-    }
-    return {
-      fecha: date,
-      dia: new Date(date + 'T12:00:00').toLocaleDateString('es-EC', { weekday: 'short', day: 'numeric' }),
-      litros,
-      am,
-      pm,
-    };
-  });
-
-  const last6Months = Array.from({ length: 6 }, (_, i) => {
-    const d = new Date();
-    d.setMonth(d.getMonth() - (5 - i));
-    return { month: d.getMonth(), year: d.getFullYear() };
-  }).map(({ month, year }) => {
-    const monthTrans = transacciones.filter(t => {
-      const d = new Date(t.fecha);
-      return d.getMonth() === month && d.getFullYear() === year;
-    });
-    return {
-      mes: getMonthName(month).substring(0, 3),
-      ingresos: monthTrans.filter(t => t.tipo === 'Ingreso').reduce((s, t) => s + (t.monto_usd || 0), 0),
-      egresos: monthTrans.filter(t => t.tipo === 'Egreso').reduce((s, t) => s + (t.monto_usd || 0), 0),
-    };
-  });
-
-  // Alertas count
-  const alertasCount = [
-    vacasEnfermas > 0,
-    enRetiro > 0,
-    vacasPreñadas > 0,
-    gananciaMes < 0,
-  ].filter(Boolean).length;
-
-  const alertasSummary = [
-    vacasEnfermas > 0 && { tipo: "error", titulo: `${vacasEnfermas} animales en Enfermería`, descripcion: "Atención veterinaria urgente" },
-    enRetiro > 0 && { tipo: "error", titulo: `${enRetiro} vacas en retiro de leche`, descripcion: "Leche no apta para venta" },
-    vacasPreñadas > 0 && { tipo: "info", titulo: `${vacasPreñadas} vacas preñadas confirmadas`, descripcion: "Verificar fechas de parto" },
-    gananciaMes < 0 && { tipo: "warning", titulo: "Gastos superan ingresos este mes", descripcion: `Déficit: ${formatCurrency(Math.abs(gananciaMes))}` },
-    produccionHoy > 0 && { tipo: "success", titulo: `${formatNumber(produccionHoy)}L producidos hoy`, descripcion: `Promedio: ${promedioPorVaca}L/vaca` },
-  ].filter(Boolean);
-
-  const recentEventos = eventos.slice(0, 6);
+  const alertasCount = alertas.length;
+  const alertasSummary = alertas;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -194,7 +80,7 @@ export default function Dashboard() {
           <StatCard title="Total Ganado" value={formatNumber(totalGanado)} subtitle={`${vacasSecas} secas`} icon={CowIcon} color="green" />
         </Link>
         <Link to="/ganado?estado=Ordeño">
-          <StatCard title="Vacas en Ordeño" value={formatNumber(vacasOrdenio.length)} subtitle={`${vacasPreñadas} preñadas`} icon={Milk} color="blue" />
+          <StatCard title="Vacas en Ordeño" value={formatNumber(vacasOrdenio)} subtitle={`${vacasPreñadas} preñadas`} icon={Milk} color="blue" />
         </Link>
         <Link to="/registro-leche">
           <StatCard title="Producción Hoy" value={`${formatNumber(produccionHoy)}L`} subtitle={`${promedioPorVaca}L por vaca`} icon={Droplets} color="blue" />
@@ -224,15 +110,15 @@ export default function Dashboard() {
               <div className="grid grid-cols-3 gap-3">
                 <div className="bg-blue-50 rounded-xl p-4 text-center">
                   <p className="text-xs text-muted-foreground">AM</p>
-                  <p className="text-2xl font-bold text-blue-700">{diaDetalle.am.toFixed(1)}L</p>
+                  <p className="text-2xl font-bold text-blue-700">{Number(diaDetalle.am).toFixed(1)}L</p>
                 </div>
                 <div className="bg-blue-50 rounded-xl p-4 text-center">
                   <p className="text-xs text-muted-foreground">PM</p>
-                  <p className="text-2xl font-bold text-blue-700">{diaDetalle.pm.toFixed(1)}L</p>
+                  <p className="text-2xl font-bold text-blue-700">{Number(diaDetalle.pm).toFixed(1)}L</p>
                 </div>
                 <div className="bg-primary/10 rounded-xl p-4 text-center">
                   <p className="text-xs text-muted-foreground">Total</p>
-                  <p className="text-2xl font-bold text-primary">{diaDetalle.litros.toFixed(1)}L</p>
+                  <p className="text-2xl font-bold text-primary">{Number(diaDetalle.litros).toFixed(1)}L</p>
                 </div>
               </div>
               <div className="text-xs text-muted-foreground bg-secondary/50 rounded-lg p-3">
@@ -252,7 +138,7 @@ export default function Dashboard() {
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(220,15%,88%)" />
                 <XAxis dataKey="dia" tick={{ fontSize: 11, fill: 'hsl(220,15%,50%)' }} />
                 <YAxis tick={{ fontSize: 11, fill: 'hsl(220,15%,50%)' }} />
-                <Tooltip formatter={(v) => [`${v.toFixed(1)}L`, "Litros"]} />
+                <Tooltip formatter={(v) => [`${Number(v).toFixed(1)}L`, "Litros"]} />
                 <Area type="monotone" dataKey="litros" stroke="hsl(152,60%,32%)" strokeWidth={2} fill="url(#colorLitros)" style={{ cursor: 'pointer' }} />
               </AreaChart>
             </ResponsiveContainer>
@@ -275,7 +161,7 @@ export default function Dashboard() {
             {alertasSummary.length === 0 ? (
               <p className="text-muted-foreground text-sm text-center py-4">Todo está en orden ✅</p>
             ) : (
-              alertasSummary.slice(0, 4).map((a, i) => <AlertaCard key={i} {...a} />)
+              alertasSummary.slice(0, 4).map((a, i) => <AlertaCard key={i} tipo={a.tipo} titulo={a.titulo} descripcion={a.descripcion} />)
             )}
           </div>
           {alertasSummary.length > 4 && (
@@ -296,7 +182,7 @@ export default function Dashboard() {
           </div>
           <div className="space-y-2.5">
             {[
-              { label: "Ordeño", count: vacasOrdenio.length, color: "bg-green-500" },
+              { label: "Ordeño", count: vacasOrdenio, color: "bg-green-500" },
               { label: "Preñadas", count: vacasPreñadas, color: "bg-blue-500" },
               { label: "Secas", count: vacasSecas, color: "bg-yellow-500" },
               { label: "Enfermería", count: vacasEnfermas, color: "bg-red-500" },
@@ -326,7 +212,7 @@ export default function Dashboard() {
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(220,15%,88%)" />
               <XAxis dataKey="mes" tick={{ fontSize: 11, fill: 'hsl(220,15%,50%)' }} />
               <YAxis tick={{ fontSize: 11, fill: 'hsl(220,15%,50%)' }} tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} />
-              <Tooltip formatter={(v) => [`$${v.toFixed(0)}`, ""]} />
+              <Tooltip formatter={(v) => [`$${Number(v).toFixed(0)}`, ""]} />
               <Bar dataKey="ingresos" fill="hsl(152,60%,40%)" radius={[4,4,0,0]} name="Ingresos" />
               <Bar dataKey="egresos" fill="hsl(0,75%,65%)" radius={[4,4,0,0]} name="Egresos" />
             </BarChart>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { inventarioIAService, INVENTARIO_IA_QUERY_KEY } from "@/services/inventarioIAService";
+import { animalService, ANIMALS_QUERY_KEY } from "@/services/animalService";
 import { getCurrentFinca } from "@/lib/current-finca";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,22 +40,16 @@ export default function InventarioIA() {
   });
 
   const fincaId = fincaData?.finca?.id;
-const { data: inventario = [], isLoading } = useQuery({
-  queryKey: ["inventario-ia", fincaId],
-  enabled: !!fincaId,
-  queryFn: () =>
-    base44.entities.InventarioIA.filter(
-      { finca_id: fincaId },
-      "-fecha_compra",
-      500
-    ),
-});
+  const { data: inventario = [], isLoading } = useQuery({
+    queryKey: INVENTARIO_IA_QUERY_KEY,
+    enabled: !!fincaId,
+    queryFn: () => inventarioIAService.list(),
+  });
 
   const { data: animales = [] } = useQuery({
-    queryKey: ["animales-para-ia", fincaId],
+    queryKey: ANIMALS_QUERY_KEY,
     enabled: !!fincaId,
-    queryFn: () =>
-      base44.entities.Animal.filter({ finca_id: fincaId }, "nombre", 500),
+    queryFn: animalService.list,
   });
 
   const toros = animales.filter((animal) => animal.estado === "Toro");
@@ -89,8 +84,8 @@ const { data: inventario = [], isLoading } = useQuery({
     const cantidad = Number(form.cantidad_inicial || 0);
 
     try {
-      await base44.entities.InventarioIA.create({
-        finca_id: fincaId,
+      // Nunca se envía finca_id: el backend lo resuelve desde el token.
+      await inventarioIAService.create({
         toro_id: form.toro_id,
         toro_nombre: form.toro_nombre,
         proveedor: form.proveedor,
@@ -106,7 +101,7 @@ const { data: inventario = [], isLoading } = useQuery({
       });
 
       await queryClient.invalidateQueries({
-        queryKey: ["inventario-ia", fincaId],
+        queryKey: INVENTARIO_IA_QUERY_KEY,
       });
 
       closeModal();

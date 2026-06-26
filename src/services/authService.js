@@ -7,6 +7,12 @@ export const authService = {
     return response;
   },
 
+  async register(data) {
+    const response = await apiClient.post("/api/auth/register", data);
+    setApiToken(response.token);
+    return response;
+  },
+
   me() {
     return apiClient.get("/api/auth/me");
   },

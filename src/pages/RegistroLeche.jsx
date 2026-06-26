@@ -1,7 +1,7 @@
-import { getCurrentFinca } from "@/lib/current-finca";
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ANIMALS_QUERY_KEY, animalService } from "@/services/animalService";
+import { MILK_RECORDS_QUERY_KEY, milkRecordService } from "@/services/milkRecordService";
 import { ChevronLeft, ChevronRight, Save, Milk } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,17 +21,12 @@ function formatDate(dateStr) {
 
 export default function RegistroLeche() {
   const today = new Date().toISOString().split("T")[0];
-  const { data: fincaData } = useQuery({
-    queryKey: ["current-finca"],
-    queryFn: getCurrentFinca,
-  });
-
-  const fincaId = fincaData?.finca?.id;
+  const queryClient = useQueryClient();
   const [windowStart, setWindowStart] = useState(addDays(today, -4));
   const [activeDate, setActiveDate] = useState(today);
   const [edits, setEdits] = useState({});
+  const [saving, setSaving] = useState(false);
 
-  // 5-day window
   const dates = Array.from({ length: 5 }, (_, i) => addDays(windowStart, i));
 
   useEffect(() => {
@@ -41,82 +36,61 @@ export default function RegistroLeche() {
   }, [windowStart]);
 
   const { data: animales = [] } = useQuery({
-    queryKey: ["animales", fincaId],
-    enabled: !!fincaId,
-    queryFn: () =>
-      base44.entities.Animal.filter(
-        { finca_id: fincaId },
-        "-nombre",
-        500
-      ),
+    queryKey: ANIMALS_QUERY_KEY,
+    queryFn: animalService.list,
   });
 
   const vacasOrdenio = animales.filter(a => a.estado === "Ordeño");
 
   const { data: registros = [], refetch: refetchRegistros } = useQuery({
-    queryKey: ["registros-leche", fincaId],
-    enabled: !!fincaId,
-    placeholderData: (previousData) => previousData,
-    queryFn: () =>
-      base44.entities.RegistroLeche.filter(
-        { finca_id: fincaId },
-        "-fecha",
-        2000
-      ),
+    queryKey: MILK_RECORDS_QUERY_KEY,
+    queryFn: milkRecordService.list,
+    placeholderData: (prev) => prev,
   });
 
-  // Index records by fecha+animal_id
   const recordMap = {};
   registros.forEach(r => {
     recordMap[`${r.fecha}__${r.animal_id}`] = r;
   });
 
-  const saveMutation = useMutation({
-    mutationFn: async ({ animalId, animalNombre, fecha, litros_am, litros_pm }) => {
-      const total = (litros_am ?? 0) + (litros_pm ?? 0);
-      const existing = recordMap[`${fecha}__${animalId}`];
-      if (existing) {
-        const nuevoAm = litros_am ?? existing.litros_am ?? 0;
-        const nuevoPm = litros_pm ?? existing.litros_pm ?? 0;
+  const handleSaveAll = async () => {
+    const entries = Object.entries(edits);
+    if (entries.length === 0) return;
 
-        return base44.entities.RegistroLeche.update(existing.id, {
-          finca_id: fincaId,
-          litros_am: nuevoAm,
-          litros_pm: nuevoPm,
-          total_litros: nuevoAm + nuevoPm,
-        });
-      } else {
-        return base44.entities.RegistroLeche.create({
-          finca_id: fincaId,
-          fecha,
+    setSaving(true);
+    try {
+      const records = entries.map(([key, vals]) => {
+        const [fecha, animalIdStr] = key.split("__");
+        const animalId = Number(animalIdStr);
+        const animal = vacasOrdenio.find(a => a.id === animalId);
+        if (!animal) return null;
+
+        const existing = recordMap[key];
+        const litros_am = vals.am !== undefined
+          ? (parseFloat(vals.am) || 0)
+          : (existing?.litros_am ?? 0);
+        const litros_pm = vals.pm !== undefined
+          ? (parseFloat(vals.pm) || 0)
+          : (existing?.litros_pm ?? 0);
+
+        return {
           animal_id: animalId,
-          animal_nombre: animalNombre,
+          animal_nombre: animal.nombre,
+          fecha,
           litros_am,
           litros_pm,
-          total_litros: total,
-        });
-      }
-    },
-    onSuccess: () => {},
-  });
+        };
+      }).filter(Boolean);
 
-  const handleSaveAll = async () => {
-    const promises = Object.entries(edits).map(([key, vals]) => {
-      const [fecha, animalId] = key.split("__");
-      const animal = vacasOrdenio.find(a => a.id === animalId);
-      if (!animal) return null;
-      return saveMutation.mutateAsync({
-        animalId,
-        animalNombre: animal.nombre,
-        fecha,
-        litros_am: vals.am !== undefined ? parseFloat(vals.am) || 0 : undefined,
-        litros_pm: vals.pm !== undefined ? parseFloat(vals.pm) || 0 : undefined,
-      });
-    }).filter(Boolean);
-    await Promise.all(promises);
-    await refetchRegistros();
-    setEdits({});
-    toast.success("Registros guardados correctamente");
+      await milkRecordService.bulkUpsert(records);
+      await refetchRegistros();
+      setEdits({});
+      toast.success("Registros guardados correctamente");
+    } catch {
+      toast.error("Error al guardar los registros");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const getVal = (fecha, animalId, field) => {
@@ -127,12 +101,9 @@ export default function RegistroLeche() {
     }
 
     const rec = recordMap[key];
-
     if (rec) {
       const value = field === "am" ? rec.litros_am : rec.litros_pm;
-      return value === null || value === undefined
-        ? ""
-        : Number(value).toFixed(1);
+      return value === null || value === undefined ? "" : Number(value).toFixed(1);
     }
 
     return "";
@@ -146,7 +117,6 @@ export default function RegistroLeche() {
     }));
   };
 
-  // Daily totals
   const dayTotals = dates.map(fecha => {
     let am = 0, pm = 0;
     vacasOrdenio.forEach(a => {
@@ -160,7 +130,6 @@ export default function RegistroLeche() {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
@@ -170,17 +139,14 @@ export default function RegistroLeche() {
         </div>
         <div className="flex items-center gap-2">
           {hasEdits && (
-            <Button onClick={handleSaveAll} className="gap-2" disabled={saveMutation.isPending}>
+            <Button onClick={handleSaveAll} className="gap-2" disabled={saving}>
               <Save className="w-4 h-4" />
-              {saveMutation.isPending ? "Guardando..." : `Guardar (${Object.keys(edits).length})`}
+              {saving ? "Guardando..." : `Guardar (${Object.keys(edits).length})`}
             </Button>
           )}
         </div>
       </div>
 
-
-      
-      {/* Table */}
       {vacasOrdenio.length === 0 ? (
         <div className="bg-card rounded-xl border border-border p-12 text-center text-muted-foreground">
           <Milk className="w-12 h-12 mx-auto mb-3 opacity-30" />
@@ -234,12 +200,8 @@ export default function RegistroLeche() {
                   <th className="sticky left-0 bg-secondary/20 px-4 py-1">Vaca</th>
                   {dates.map(fecha => (
                     <>
-                      <th key={`${fecha}-am`} className={`text-center py-1 px-1 ${fecha === activeDate ? "bg-accent/50" : ""}`}>
-                        AM
-                      </th>
-                      <th key={`${fecha}-pm`} className={`text-center py-1 px-1 ${fecha === activeDate ? "bg-accent/50" : ""}`}>
-                        PM
-                      </th>
+                      <th key={`${fecha}-am`} className={`text-center py-1 px-1 ${fecha === activeDate ? "bg-accent/50" : ""}`}>AM</th>
+                      <th key={`${fecha}-pm`} className={`text-center py-1 px-1 ${fecha === activeDate ? "bg-accent/50" : ""}`}>PM</th>
                     </>
                   ))}
                   <th className="text-center px-3 py-1">Prom.</th>
@@ -247,7 +209,6 @@ export default function RegistroLeche() {
               </thead>
               <tbody>
                 {vacasOrdenio.map((animal, idx) => {
-                  // Calculate 5-day avg for this animal
                   let sumDays = 0, countDays = 0;
                   dates.forEach(fecha => {
                     const am = parseFloat(getVal(fecha, animal.id, "am")) || 0;
@@ -271,18 +232,10 @@ export default function RegistroLeche() {
                             <td key={`${fecha}-am`} className={`px-1 py-1.5 text-center ${isActive ? "bg-accent/30" : ""}`}>
                               {isActive ? (
                                 <Input
-                                  type="number"
-                                  min="0"
-                                  step="0.1"
-                                  value={am}
+                                  type="number" min="0" step="0.1" value={am}
                                   onChange={e => setVal(fecha, animal.id, "am", e.target.value)}
-                                  onBlur={e => {
-                                    const value = e.target.value;
-                                    if (value === "") return;
-                                    setVal(fecha, animal.id, "am", Number(value).toFixed(1));
-                                  }}
-                                  className="w-16 h-7 text-center text-xs px-1"
-                                  placeholder="0"
+                                  onBlur={e => { if (e.target.value !== "") setVal(fecha, animal.id, "am", Number(e.target.value).toFixed(1)); }}
+                                  className="w-16 h-7 text-center text-xs px-1" placeholder="0"
                                 />
                               ) : (
                                 <span className={`text-xs ${am === "" ? "text-muted-foreground" : "text-foreground font-medium"}`}>
@@ -293,13 +246,9 @@ export default function RegistroLeche() {
                             <td key={`${fecha}-pm`} className={`px-1 py-1.5 text-center ${isActive ? "bg-accent/30" : ""}`}>
                               {isActive ? (
                                 <Input
-                                  type="number"
-                                  min="0"
-                                  step="0.1"
-                                  value={pm}
+                                  type="number" min="0" step="0.1" value={pm}
                                   onChange={e => setVal(fecha, animal.id, "pm", e.target.value)}
-                                  className="w-16 h-7 text-center text-xs px-1"
-                                  placeholder="0"
+                                  className="w-16 h-7 text-center text-xs px-1" placeholder="0"
                                 />
                               ) : (
                                 <span className={`text-xs ${pm === "" ? "text-muted-foreground" : "text-foreground font-medium"}`}>

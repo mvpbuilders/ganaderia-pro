@@ -1,41 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { useQuery } from "@tanstack/react-query";
+import { adminService, ADMIN_OVERVIEW_QUERY_KEY } from "@/services/adminService";
 
 export default function AdminFincas() {
-  const [data, setData] = useState(null);
+  const { data, isLoading } = useQuery({
+    queryKey: ADMIN_OVERVIEW_QUERY_KEY,
+    queryFn: adminService.overview,
+  });
 
-  useEffect(() => {
-    async function loadFincas() {
-      const [fincas, usuariosFinca, animales] = await Promise.all([
-        base44.entities.Finca.list(),
-        base44.entities.FincaUsuario.list(),
-        base44.entities.Animal.list(),
-      ]);
+  if (isLoading || !data) return <div className="p-6">Cargando fincas...</div>;
 
-      setData({ fincas, usuariosFinca, animales });
-    }
-
-    loadFincas();
-  }, []);
-
-  const rows = useMemo(() => {
-    if (!data) return [];
-
-    return data.fincas.map((finca) => {
-      const usuarios = data.usuariosFinca.filter((u) => u.finca_id === finca.id);
-      const owner = usuarios.find((u) => u.role === "owner");
-      const animales = data.animales.filter((a) => a.finca_id === finca.id);
-
-      return {
-        ...finca,
-        owner_email: owner?.email || "-",
-        usuarios_count: usuarios.length,
-        animales_count: animales.length,
-      };
-    });
-  }, [data]);
-
-  if (!data) return <div className="p-6">Cargando fincas...</div>;
+  const rows = data.fincas;
 
   return (
     <div className="p-6 space-y-6">
@@ -48,7 +22,7 @@ export default function AdminFincas() {
         <Card title="Total fincas" value={rows.length} />
         <Card title="Con animales" value={rows.filter((f) => f.animales_count > 0).length} />
         <Card title="Sin animales" value={rows.filter((f) => f.animales_count === 0).length} />
-        <Card title="Usuarios asociados" value={data.usuariosFinca.length} />
+        <Card title="Usuarios asociados" value={data.usuarios.length} />
       </div>
 
       <div className="bg-white border rounded-xl overflow-hidden">
@@ -73,8 +47,8 @@ export default function AdminFincas() {
                   <td className="p-3">{finca.usuarios_count}</td>
                   <td className="p-3">{finca.animales_count}</td>
                   <td className="p-3">
-                    {finca.created_date
-                      ? new Date(finca.created_date).toLocaleDateString("es-AR")
+                    {finca.created_at
+                      ? new Date(finca.created_at).toLocaleDateString("es-AR")
                       : "-"}
                   </td>
                 </tr>

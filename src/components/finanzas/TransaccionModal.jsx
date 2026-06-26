@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { financialTransactionService } from "@/services/financialTransactionService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +9,7 @@ import { X } from "lucide-react";
 const CATEGORIAS_INGRESO = ["Venta de leche", "Venta de animal", "Otros"];
 const CATEGORIAS_EGRESO = ["Alimentacion", "Veterinario", "Medicamentos", "Mano de obra", "Equipos", "Combustible", "Mantenimiento", "Servicios", "Otros"];
 
-export default function TransaccionModal({ fincaId, onClose, onSave }) {
+export default function TransaccionModal({ onClose, onSave }) {
   const [form, setForm] = useState({
     tipo: "Ingreso", categoria: "Venta de leche", monto_usd: "", fecha: new Date().toISOString().split('T')[0],
     descripcion: "", litros: "", precio_por_litro: "", notas: ""
@@ -22,15 +22,21 @@ export default function TransaccionModal({ fincaId, onClose, onSave }) {
   const handleSave = async () => {
     if (!form.monto_usd || !form.categoria) return;
     setLoading(true);
-    await base44.entities.Transaccion.create({
-      ...form,
-      finca_id: fincaId,
-      monto_usd: Number(form.monto_usd),
-      litros: form.litros ? Number(form.litros) : undefined,
-      precio_por_litro: form.precio_por_litro ? Number(form.precio_por_litro) : undefined,
-    });
-    setLoading(false);
-    onSave();
+    try {
+      await financialTransactionService.create({
+        tipo: form.tipo,
+        categoria: form.categoria,
+        monto_usd: Number(form.monto_usd),
+        fecha: form.fecha,
+        descripcion: form.descripcion || undefined,
+        litros: form.litros ? Number(form.litros) : undefined,
+        precio_por_litro: form.precio_por_litro ? Number(form.precio_por_litro) : undefined,
+        notas: form.notas || undefined,
+      });
+      onSave();
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

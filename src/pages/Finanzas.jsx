@@ -1,11 +1,10 @@
-import { getCurrentFinca } from "@/lib/current-finca";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { FINANCIAL_TRANSACTIONS_QUERY_KEY, financialTransactionService } from "@/services/financialTransactionService";
 import { formatCurrency, formatDate, getMonthName } from "@/lib/utils";
 import { Plus, TrendingUp, TrendingDown, DollarSign, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import TransaccionModal from "@/components/finanzas/TransaccionModal";
 
 const CATEGORIAS_COLORES = {
@@ -27,29 +26,17 @@ export default function Finanzas() {
   const [tipoFiltro, setTipoFiltro] = useState("Todos");
   const queryClient = useQueryClient();
   const now = new Date();
-  const { data: fincaData } = useQuery({
-    queryKey: ['current-finca'],
-    queryFn: getCurrentFinca,
-  });
-
-  const fincaId = fincaData?.finca?.id;
 
   const { data: transacciones = [], isLoading } = useQuery({
-    queryKey: ['transacciones', fincaId],
-    enabled: !!fincaId,
-    queryFn: () =>
-      base44.entities.Transaccion.filter(
-        { finca_id: fincaId },
-        '-fecha',
-        500
-      ),
+    queryKey: FINANCIAL_TRANSACTIONS_QUERY_KEY,
+    queryFn: financialTransactionService.list,
   });
 
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
 
   const mesFiltradas = transacciones.filter(t => {
-    const d = new Date(t.fecha);
+    const d = new Date(t.fecha + "T12:00:00");
     return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
   });
 
@@ -59,7 +46,6 @@ export default function Finanzas() {
   const litrosMes = mesFiltradas.filter(t => t.categoria === 'Venta de leche').reduce((s, t) => s + (t.litros || 0), 0);
   const costoPorLitro = litrosMes > 0 ? (egresosMes / litrosMes).toFixed(3) : 0;
 
-  // Gastos por categoría para pie chart
   const gastosCategorias = mesFiltradas
     .filter(t => t.tipo === 'Egreso')
     .reduce((acc, t) => {
@@ -69,13 +55,12 @@ export default function Finanzas() {
 
   const pieData = Object.entries(gastosCategorias).map(([name, value]) => ({ name, value }));
 
-  // Monthly chart
   const last6Months = Array.from({ length: 6 }, (_, i) => {
     const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
     return { month: d.getMonth(), year: d.getFullYear(), label: getMonthName(d.getMonth()).substring(0, 3) };
   }).map(({ month, year, label }) => {
     const monthTrans = transacciones.filter(t => {
-      const d = new Date(t.fecha);
+      const d = new Date(t.fecha + "T12:00:00");
       return d.getMonth() === month && d.getFullYear() === year;
     });
     return {
@@ -193,7 +178,7 @@ export default function Finanzas() {
         ) : (
           <div className="divide-y divide-border">
             {transFiltered.slice(0, 50).map((t, i) => (
-              <div key={i} className="flex items-center gap-4 px-5 py-3 hover:bg-secondary/30 transition-colors">
+              <div key={t.id ?? i} className="flex items-center gap-4 px-5 py-3 hover:bg-secondary/30 transition-colors">
                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm ${t.tipo === 'Ingreso' ? 'bg-green-100' : 'bg-red-100'}`}>
                   {t.tipo === 'Ingreso' ? '↑' : '↓'}
                 </div>
@@ -212,10 +197,9 @@ export default function Finanzas() {
 
       {showModal && (
         <TransaccionModal
-          fincaId={fincaId}
           onClose={() => setShowModal(false)}
           onSave={() => {
-            queryClient.invalidateQueries(['transacciones', fincaId]);
+            queryClient.invalidateQueries({ queryKey: FINANCIAL_TRANSACTIONS_QUERY_KEY });
             setShowModal(false);
           }}
         />

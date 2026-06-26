@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { authService } from "@/services/authService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,19 +25,20 @@ export default function Signup() {
 
     setLoading(true);
     try {
-      await base44.auth.register({
+      // Rails crea el usuario, su finca y la membresía owner, y devuelve el token
+      // (inicia sesión de inmediato). No hay verificación por OTP.
+      await authService.register({
         full_name: fullName,
         email,
         password,
+        password_confirmation: password,
       });
 
-      toast.success("Cuenta creada. Revisá tu email para verificar el código.");
-      sessionStorage.setItem("signup_email", email);
-      sessionStorage.setItem("signup_password", password);
-      window.location.href = `/verify-otp?email=${encodeURIComponent(email)}`;
+      toast.success("Cuenta creada correctamente.");
+      window.location.href = "/";
     } catch (err) {
       console.error(err);
-      const msg = err?.data?.message || err?.message || "";
+      const msg = err?.message || "";
       if (msg.toLowerCase().includes("email")) {
         setErrors({ email: "Este email ya está registrado." });
       } else {

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { eventoService, eventosQueryKey } from "@/services/eventoService";
+import { milkRecordService } from "@/services/milkRecordService";
 import { ANIMALS_QUERY_KEY, animalService } from "@/services/animalService";
 import { formatDate, calcularEdad } from "@/lib/utils";
 import EstadoBadge from "@/components/shared/EstadoBadge";
@@ -18,23 +19,19 @@ export default function AnimalDetalle({ animal, onBack, onEdit, onSelectAnimal }
   const fincaId = animal?.finca_id;
 
   const { data: eventos = [], refetch: refetchEventos } = useQuery({
-    queryKey: ['eventos-animal', fincaId, animal.id],
-    enabled: !!fincaId && !!animal?.id,
-    queryFn: () => base44.entities.Evento.filter(
-      { finca_id: fincaId, animal_id: animal.id },
-      '-fecha',
-      100
-    ),
+    queryKey: eventosQueryKey({ animalId: animal.id, limit: 100 }),
+    enabled: !!animal?.id,
+    queryFn: () => eventoService.list({ animal_id: animal.id, limit: 100 }),
   });
 
   const { data: registrosLeche = [] } = useQuery({
-    queryKey: ['leche-animal', fincaId, animal.id],
-    enabled: !!fincaId && !!animal?.id,
-    queryFn: () => base44.entities.RegistroLeche.filter(
-      { finca_id: fincaId, animal_id: animal.id },
-      '-fecha',
-      60
-    ),
+    queryKey: ['leche-animal', animal.id],
+    enabled: !!animal?.id,
+    queryFn: async () => {
+      // El backend filtra por animal_id y ordena por fecha desc.
+      const records = await milkRecordService.list({ animal_id: animal.id });
+      return records.slice(0, 60);
+    },
   });
 
 const { data: animalesFinca = [] } = useQuery({

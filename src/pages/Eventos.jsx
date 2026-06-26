@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { eventoService, EVENTOS_QUERY_KEY, eventosQueryKey } from "@/services/eventoService";
+import { animalService, ANIMALS_QUERY_KEY } from "@/services/animalService";
 import { formatDate, getTipoEventoColor } from "@/lib/utils";
 import { ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -42,78 +43,59 @@ export default function Eventos() {
   const fincaId = fincaData?.finca?.id;
 
   const { data: animales = [] } = useQuery({
-    queryKey: ['animales', fincaId],
+    queryKey: ANIMALS_QUERY_KEY,
     enabled: !!fincaId,
-    queryFn: () => base44.entities.Animal.filter({ finca_id: fincaId }, '-nombre', 500),
+    queryFn: animalService.list,
   });
 
   const { data: eventos = [] } = useQuery({
-    queryKey: ['eventos', fincaId],
+    queryKey: eventosQueryKey({ limit: 50 }),
     enabled: !!fincaId,
-    queryFn: () => base44.entities.Evento.filter({ finca_id: fincaId }, '-fecha', 50),
+    queryFn: () => eventoService.list({ limit: 50 }),
   });
 
   const animalSeleccionado = animales.find(a => a.nombre === form.animal_nombre);
 
   const handleSave = async () => {
     setLoading(true);
+
+    // Toda la lógica de negocio (actualización del animal, fechas reproductivas,
+    // retiro de leche, etc.) vive ahora en el backend. El frontend solo envía
+    // el evento; nunca envía finca_id.
     const eventoData = {
-      finca_id: fincaId,
       tipo: form.tipo,
       animal_nombre: form.animal_nombre || null,
       animal_id: animalSeleccionado?.id || null,
       fecha: form.fecha,
-      notas: form.notas,
-      descripcion: form.descripcion,
-      valor_litros: form.valor_litros ? Number(form.valor_litros) : undefined,
-      valor_usd: form.valor_usd ? Number(form.valor_usd) : undefined,
-      veterinario: form.veterinario || undefined,
-      medicamento: form.medicamento || undefined,
-      dosis: form.dosis || undefined,
+      notas: form.notas || null,
+      descripcion: form.descripcion || null,
+      valor_litros: form.valor_litros ? Number(form.valor_litros) : null,
+      valor_usd: form.valor_usd ? Number(form.valor_usd) : null,
+      veterinario: form.veterinario || null,
+      medicamento: form.medicamento || null,
+      dosis: form.dosis || null,
+      sexo_cria: form.tipo === "Parto" ? form.sexo_cria : null,
+      nombre_cria: form.tipo === "Parto" ? form.nombre_cria : null,
+      peso_cria: form.tipo === "Parto" && form.peso_cria ? Number(form.peso_cria) : null,
+      requiere_retiro_leche: form.tipo === "Tratamiento" ? form.requiere_retiro_leche : false,
+      dias_retiro: form.tipo === "Tratamiento" && form.dias_retiro ? Number(form.dias_retiro) : 0,
+      resultado: form.tipo === "Chequeo veterinario" ? form.resultado : null,
+      grupo_nuevo: form.tipo === "Cambio de grupo" ? form.grupo_nuevo : null,
     };
 
-    if (form.tipo === "Parto") {
-      Object.assign(eventoData, { sexo_cria: form.sexo_cria, nombre_cria: form.nombre_cria, peso_cria: form.peso_cria ? Number(form.peso_cria) : undefined });
-      if (animalSeleccionado) {
-        await base44.entities.Animal.update(animalSeleccionado.id, { fecha_ultimo_parto: form.fecha, estado: "Ordeño", estado_reproductivo: "Abierta" });
-      }
-    } else if (form.tipo === "Inseminacion" && animalSeleccionado) {
-      const checkDate = new Date(form.fecha);
-      checkDate.setDate(checkDate.getDate() + 35);
-      await base44.entities.Animal.update(animalSeleccionado.id, { estado_reproductivo: "Inseminada", fecha_proximo_chequeo: checkDate.toISOString().split('T')[0] });
-    } else if (form.tipo === "Tratamiento") {
-      Object.assign(eventoData, { requiere_retiro_leche: form.requiere_retiro_leche, dias_retiro: form.dias_retiro ? Number(form.dias_retiro) : 0 });
-      if (form.requiere_retiro_leche && form.dias_retiro && animalSeleccionado) {
-        const retiroDate = new Date(form.fecha);
-        retiroDate.setDate(retiroDate.getDate() + Number(form.dias_retiro));
-        await base44.entities.Animal.update(animalSeleccionado.id, { retiro_leche_hasta: retiroDate.toISOString().split('T')[0], estado: "Enfermería" });
-      }
-    } else if (form.tipo === "Chequeo veterinario" && animalSeleccionado) {
-      Object.assign(eventoData, { resultado: form.resultado });
-      if (form.resultado === "Preñada positiva") {
-        const partoDate = new Date(form.fecha); partoDate.setDate(partoDate.getDate() + 210);
-        const secadoDate = new Date(form.fecha); secadoDate.setDate(secadoDate.getDate() + 150);
-        await base44.entities.Animal.update(animalSeleccionado.id, { estado_reproductivo: "Preñada positiva", fecha_proxima_cria: partoDate.toISOString().split('T')[0], fecha_secado: secadoDate.toISOString().split('T')[0] });
-      } else if (form.resultado) {
-        await base44.entities.Animal.update(animalSeleccionado.id, { estado_reproductivo: form.resultado });
-      }
-    } else if (form.tipo === "Celo" && animalSeleccionado) {
-      await base44.entities.Animal.update(animalSeleccionado.id, { estado_reproductivo: "En celo" });
-    } else if (form.tipo === "Cambio de grupo") {
-      Object.assign(eventoData, { grupo_anterior: animalSeleccionado?.grupo, grupo_nuevo: form.grupo_nuevo });
-      if (animalSeleccionado && form.grupo_nuevo) {
-        await base44.entities.Animal.update(animalSeleccionado.id, { grupo: form.grupo_nuevo });
-      }
+    try {
+      await eventoService.create(eventoData);
+      setSuccess(true);
+      toast.success("Evento registrado correctamente");
+      setForm(f => ({ ...f, animal_nombre: "", valor_litros: "", valor_usd: "", descripcion: "", notas: "" }));
+      queryClient.invalidateQueries({ queryKey: EVENTOS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ANIMALS_QUERY_KEY });
+      setTimeout(() => setSuccess(false), 2000);
+    } catch (error) {
+      toast.error(error.message || "Error al registrar el evento");
+    } finally {
+      setLoading(false);
     }
-
-    await base44.entities.Evento.create(eventoData);
-    setLoading(false);
-    setSuccess(true);
-    toast.success("Evento registrado correctamente");
-    setForm(f => ({ ...f, animal_nombre: "", valor_litros: "", valor_usd: "", descripcion: "", notas: "" }));
-    queryClient.invalidateQueries(['eventos']);
-    queryClient.invalidateQueries(['animales']);
-    setTimeout(() => setSuccess(false), 2000);
   };
 
   return (

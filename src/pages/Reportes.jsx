@@ -1,7 +1,10 @@
 import { getCurrentFinca } from "@/lib/current-finca";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { animalService, ANIMALS_QUERY_KEY } from "@/services/animalService";
+import { eventoService, eventosQueryKey } from "@/services/eventoService";
+import { financialTransactionService, FINANCIAL_TRANSACTIONS_QUERY_KEY } from "@/services/financialTransactionService";
+import { milkRecordService, MILK_RECORDS_QUERY_KEY } from "@/services/milkRecordService";
 import { formatCurrency, getMonthName } from "@/lib/utils";
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -20,47 +23,27 @@ export default function Reportes() {
   const fincaId = fincaData?.finca?.id;
 
   const { data: animales = [] } = useQuery({
-    queryKey: ['animales', fincaId],
+    queryKey: ANIMALS_QUERY_KEY,
     enabled: !!fincaId,
-    queryFn: () =>
-      base44.entities.Animal.filter(
-        { finca_id: fincaId },
-        '-created_date',
-        500
-    ),
+    queryFn: animalService.list,
   });
 
   const { data: eventos = [] } = useQuery({
-    queryKey: ['eventos', fincaId],
+    queryKey: eventosQueryKey({ limit: 500 }),
     enabled: !!fincaId,
-    queryFn: () =>
-      base44.entities.Evento.filter(
-        { finca_id: fincaId },
-        '-fecha',
-        500
-      ),
+    queryFn: () => eventoService.list({ limit: 500 }),
   });
 
   const { data: transacciones = [] } = useQuery({
-    queryKey: ['transacciones', fincaId],
+    queryKey: FINANCIAL_TRANSACTIONS_QUERY_KEY,
     enabled: !!fincaId,
-    queryFn: () =>
-      base44.entities.Transaccion.filter(
-        { finca_id: fincaId },
-        '-fecha',
-        500
-      ),
+    queryFn: financialTransactionService.list,
   });
 
   const { data: registrosLeche = [] } = useQuery({
-    queryKey: ['registros-leche-reportes', fincaId],
+    queryKey: MILK_RECORDS_QUERY_KEY,
     enabled: !!fincaId,
-    queryFn: () =>
-      base44.entities.RegistroLeche.filter(
-        { finca_id: fincaId },
-        '-fecha',
-        500
-      ),
+    queryFn: milkRecordService.list,
   });
 
   const now = new Date();

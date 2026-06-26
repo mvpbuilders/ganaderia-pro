@@ -1,23 +1,18 @@
-import { base44 } from "@/api/base44Client";
+import { authService } from "@/services/authService";
 
+// Devuelve la finca actual del usuario autenticado consultando la API de Rails.
+// El backend resuelve la finca a partir del token (current_finca); el frontend
+// nunca envía ni decide finca_id.
 export async function getCurrentFinca() {
-  const user = await base44.auth.me();
+  const data = await authService.me();
 
-  const relaciones = await base44.entities.FincaUsuario.filter({
-    email: user.email
-  });
-
-  if (!relaciones.length) {
+  if (!data?.current_finca) {
     return null;
   }
 
-  const relacion = relaciones[0];
-
-  const finca = await base44.entities.Finca.get(relacion.finca_id);
-
   return {
-    finca,
-    relacion,
-    user
+    finca: data.current_finca,
+    relacion: data.membership,
+    user: data.user,
   };
 }
