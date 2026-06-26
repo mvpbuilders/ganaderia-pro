@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { authService } from "@/services/authService";
 
 export default function CurrentUser() {
   const [user, setUser] = useState(null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    base44.auth.me()
+    authService
+      .me()
       .then(setUser)
       .catch((err) => {
         console.error(err);

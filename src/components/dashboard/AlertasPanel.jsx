@@ -1,6 +1,5 @@
-import { getCurrentFinca } from "@/lib/current-finca";
 import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { dashboardService, DASHBOARD_QUERY_KEY } from "@/services/dashboardService";
 import { X, AlertTriangle, CheckCircle2, Info, Bell } from "lucide-react";
 
 const CONFIG_ICONS = {
@@ -11,83 +10,13 @@ const CONFIG_ICONS = {
 };
 
 export default function AlertasPanel({ onClose }) {
-  const { data: fincaData } = useQuery({
-    queryKey: ['current-finca'],
-    queryFn: getCurrentFinca,
+  // Las alertas se calculan en el backend; aquí solo se renderizan.
+  const { data: dashboard } = useQuery({
+    queryKey: DASHBOARD_QUERY_KEY,
+    queryFn: dashboardService.get,
   });
 
-  const fincaId = fincaData?.finca?.id;
-  const { data: animales = [] } = useQuery({
-    queryKey: ['animales', fincaId],
-    enabled: !!fincaId,
-    queryFn: () =>
-      base44.entities.Animal.filter(
-        { finca_id: fincaId },
-        '-created_date',
-        500
-      ),
-  });
-
-  const { data: transacciones = [] } = useQuery({
-    queryKey: ['transacciones', fincaId],
-    enabled: !!fincaId,
-    queryFn: () =>
-      base44.entities.Transaccion.filter(
-        { finca_id: fincaId },
-        '-fecha',
-        200
-      ),
-  });
-
-  const hoy = new Date();
-  const hoyStr = hoy.toISOString().split('T')[0];
-  const en7Dias = new Date(hoy); en7Dias.setDate(hoy.getDate() + 7);
-  const en7Str = en7Dias.toISOString().split('T')[0];
-
-  const now = hoy;
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
-  const mesTrans = transacciones.filter(t => {
-    const d = new Date(t.fecha);
-    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-  });
-  const ingresosMes = mesTrans.filter(t => t.tipo === 'Ingreso').reduce((s, t) => s + t.monto_usd, 0);
-  const egresosMes = mesTrans.filter(t => t.tipo === 'Egreso').reduce((s, t) => s + t.monto_usd, 0);
-
-  const alertas = [];
-
-  // En retiro de leche
-  const enRetiro = animales.filter(a => a.retiro_leche_hasta && a.retiro_leche_hasta >= hoyStr);
-  if (enRetiro.length > 0) alertas.push({ tipo: "error", titulo: `${enRetiro.length} vaca(s) en retiro de leche`, descripcion: enRetiro.map(a => `${a.nombre} hasta ${a.retiro_leche_hasta}`).join(' · ') });
-
-  // Vacas enfermas
-  const enfermas = animales.filter(a => a.estado === "Enfermería");
-  if (enfermas.length > 0) alertas.push({ tipo: "error", titulo: `${enfermas.length} animales en Enfermería`, descripcion: enfermas.map(a => a.nombre).join(', ') });
-
-  // Próximos partos (7 días)
-  const proxPartos = animales.filter(a => a.fecha_proxima_cria && a.fecha_proxima_cria >= hoyStr && a.fecha_proxima_cria <= en7Str);
-  if (proxPartos.length > 0) alertas.push({ tipo: "warning", titulo: `${proxPartos.length} parto(s) en los próximos 7 días`, descripcion: proxPartos.map(a => `${a.nombre}: ${a.fecha_proxima_cria}`).join(' · ') });
-
-  // Secado próximo (14 días)
-  const en14Dias = new Date(hoy); en14Dias.setDate(hoy.getDate() + 14);
-  const en14Str = en14Dias.toISOString().split('T')[0];
-  const proxSecado = animales.filter(a => a.fecha_secado && a.fecha_secado >= hoyStr && a.fecha_secado <= en14Str);
-  if (proxSecado.length > 0) alertas.push({ tipo: "warning", titulo: `${proxSecado.length} vaca(s) para secar en 14 días`, descripcion: proxSecado.map(a => a.nombre).join(', ') });
-
-  // Chequeo pendiente
-  const chequeoVencido = animales.filter(a => a.fecha_proximo_chequeo && a.fecha_proximo_chequeo <= hoyStr);
-  if (chequeoVencido.length > 0) alertas.push({ tipo: "warning", titulo: `${chequeoVencido.length} chequeo(s) veterinario(s) pendientes`, descripcion: chequeoVencido.map(a => a.nombre).join(', ') });
-
-  // Vacas en celo
-  const enCelo = animales.filter(a => a.estado_reproductivo === "En celo");
-  if (enCelo.length > 0) alertas.push({ tipo: "info", titulo: `${enCelo.length} vaca(s) en celo detectado`, descripcion: enCelo.map(a => a.nombre).join(', ') });
-
-  // Vacas abiertas sin inseminación
-  const abiertas = animales.filter(a => a.estado_reproductivo === "Abierta" && a.estado === "Ordeño");
-  if (abiertas.length > 0) alertas.push({ tipo: "info", titulo: `${abiertas.length} vaca(s) abiertas sin inseminación`, descripcion: abiertas.map(a => a.nombre).join(', ') });
-
-  // Deficit financiero
-  if (egresosMes > ingresosMes) alertas.push({ tipo: "warning", titulo: "Egresos superan ingresos este mes", descripcion: `Déficit de $${(egresosMes - ingresosMes).toFixed(2)}` });
+  const alertas = dashboard?.alertas || [];
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
@@ -110,7 +39,7 @@ export default function AlertasPanel({ onClose }) {
               <p className="text-sm text-muted-foreground mt-1">No hay alertas activas en este momento</p>
             </div>
           ) : alertas.map((a, i) => {
-            const c = CONFIG_ICONS[a.tipo];
+            const c = CONFIG_ICONS[a.tipo] || CONFIG_ICONS.info;
             const Icon = c.icon;
             return (
               <div key={i} className={`rounded-xl p-4 border ${c.bg} ${c.border}`}>

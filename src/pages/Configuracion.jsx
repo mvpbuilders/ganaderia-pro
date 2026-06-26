@@ -1,7 +1,12 @@
 import { getCurrentFinca } from "@/lib/current-finca";
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { configuracionService, CONFIGURACION_QUERY_KEY } from "@/services/configuracionService";
+import { fincaUserService, FINCA_USERS_QUERY_KEY } from "@/services/fincaUserService";
+import { animalService } from "@/services/animalService";
+import { eventoService } from "@/services/eventoService";
+import { milkRecordService } from "@/services/milkRecordService";
+import { financialTransactionService } from "@/services/financialTransactionService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +21,7 @@ export default function Configuracion() {
   const [isLoadingSeed, setIsLoadingSeed] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("worker");
+
   const { data: fincaData } = useQuery({
     queryKey: ["current-finca"],
     queryFn: getCurrentFinca,
@@ -23,74 +29,36 @@ export default function Configuracion() {
 
   const fincaId = fincaData?.finca?.id;
   const currentRole = fincaData?.relacion?.role;
-  const { data: usuariosFinca = [] } = useQuery({
-    queryKey: ["usuarios-finca", fincaId],
-    enabled: !!fincaId,
-    queryFn: () =>
-      base44.entities.FincaUsuario.filter({
-        finca_id: fincaId,
-      }),
-  });
   const canManageUsers = ["owner", "admin"].includes(currentRole);
 
-  const { data: config } = useQuery({
-    queryKey: ["configuracion", fincaId],
+  const { data: usuariosFinca = [] } = useQuery({
+    queryKey: FINCA_USERS_QUERY_KEY,
     enabled: !!fincaId,
-    queryFn: async () => {
-      const items = await base44.entities.Configuracion.filter({
-        finca_id: fincaId,
-      });
-
-  const handleInviteUser = async () => {
-    if (!inviteEmail || !fincaId) return;
-
-    const existing = await base44.entities.FincaUsuario.filter({
-      finca_id: fincaId,
-      email: inviteEmail.trim().toLowerCase(),
-    });
-
-    if (existing.length > 0) {
-      toast.error("Ese usuario ya está invitado a esta finca");
-      return;
-    }
-
-    await base44.entities.FincaUsuario.create({
-      finca_id: fincaId,
-      email: inviteEmail.trim().toLowerCase(),
-      role: inviteRole,
-    });
-
-    setInviteEmail("");
-    setInviteRole("worker");
-    toast.success("Usuario invitado correctamente");
-  };
-      return items[0] || {};
-    },
+    queryFn: fincaUserService.list,
   });
 
-  const { data: animalesOrdenio = [] } = useQuery({
-    queryKey: ["animales-ordenio"],
-    queryFn: () =>
-    base44.entities.Animal.filter({
-      estado: "Ordeño",
-      finca_id: fincaId,
-    }),
+  const { data: config } = useQuery({
+    queryKey: CONFIGURACION_QUERY_KEY,
+    enabled: !!fincaId,
+    queryFn: configuracionService.get,
   });
+
+  const { data: animales = [] } = useQuery({
+    queryKey: ["animales-config"],
+    enabled: !!fincaId,
+    queryFn: animalService.list,
+  });
+
+  const animalesOrdenio = animales.filter((a) => a.estado === "Ordeño");
 
   const saveMutation = useMutation({
-    mutationFn: async (data) => {
-      if (config.id) {
-        return base44.entities.Configuracion.update(config.id, data);
-      } else {
-        return base44.entities.Configuracion.create({
-          ...data,
-          finca_id: fincaId,
-        });
-      }
-    },
+    mutationFn: (data) => configuracionService.save(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["configuracion"] });
+      queryClient.invalidateQueries({ queryKey: CONFIGURACION_QUERY_KEY });
       toast.success("Configuración guardada");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Error al guardar la configuración");
     },
   });
 
@@ -101,7 +69,7 @@ export default function Configuracion() {
   }, [config]);
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSave = () => {
@@ -116,39 +84,21 @@ export default function Configuracion() {
 
     setIsLoadingSeed(true);
     try {
-      const animalIds = animalesOrdenio.map(a => a.id);
-      const animalNames = animalesOrdenio.map(a => a.nombre);
+      const animalIds = animalesOrdenio.map((a) => a.id);
+      const animalNames = animalesOrdenio.map((a) => a.nombre);
 
-      // Generate all data
+      // El backend resuelve finca_id desde el token; el frontend nunca lo envía.
       const registroLeche = generateRegistroLeche(animalIds, animalNames);
       const eventos = generateEventos(animalIds, animalNames);
       const transacciones = generateTransacciones();
 
-      const registroLecheConFinca = registroLeche.map(item => ({
-        ...item,
-        finca_id: fincaId,
-      }));
+      await milkRecordService.bulkUpsert(registroLeche);
+      await Promise.all(eventos.map((e) => eventoService.create(e)));
+      await Promise.all(transacciones.map((t) => financialTransactionService.create(t)));
 
-      const eventosConFinca = eventos.map(item => ({
-        ...item,
-        finca_id: fincaId,
-      }));
-
-      const transaccionesConFinca = transacciones.map(item => ({
-        ...item,
-        finca_id: fincaId,
-      }));
-
-      // Bulk insert
-      await base44.entities.RegistroLeche.bulkCreate(registroLecheConFinca);
-      await base44.entities.Evento.bulkCreate(eventosConFinca);
-      await base44.entities.Transaccion.bulkCreate(transaccionesConFinca);
-
-      // Invalidate queries
-      queryClient.invalidateQueries({ queryKey: ["registros-leche"] });
+      queryClient.invalidateQueries({ queryKey: ["milk_records"] });
       queryClient.invalidateQueries({ queryKey: ["eventos"] });
-      queryClient.invalidateQueries({ queryKey: ["transacciones"] });
-      queryClient.invalidateQueries({ queryKey: ["leche-reciente"] });
+      queryClient.invalidateQueries({ queryKey: ["financial_transactions"] });
 
       toast.success(
         `✅ Datos generados: ${registroLeche.length} registros lecheros, ${eventos.length} eventos, ${transacciones.length} transacciones`
@@ -163,25 +113,15 @@ export default function Configuracion() {
   const handleInviteUser = async () => {
     if (!inviteEmail || !fincaId) return;
 
-    const existing = await base44.entities.FincaUsuario.filter({
-      finca_id: fincaId,
-      email: inviteEmail.trim().toLowerCase(),
-    });
-
-    if (existing.length > 0) {
-      toast.error("Ese usuario ya está invitado a esta finca");
-      return;
+    try {
+      await fincaUserService.invite(inviteEmail.trim().toLowerCase(), inviteRole);
+      setInviteEmail("");
+      setInviteRole("worker");
+      queryClient.invalidateQueries({ queryKey: FINCA_USERS_QUERY_KEY });
+      toast.success("Usuario invitado correctamente");
+    } catch (error) {
+      toast.error(error.message || "No se pudo invitar al usuario");
     }
-
-    await base44.entities.FincaUsuario.create({
-      finca_id: fincaId,
-      email: inviteEmail.trim().toLowerCase(),
-      role: inviteRole,
-    });
-
-    setInviteEmail("");
-    setInviteRole("worker");
-    toast.success("Usuario invitado correctamente");
   };
 
   return (
@@ -244,7 +184,7 @@ export default function Configuracion() {
               <Label>Precio por Litro (USD)</Label>
               <Input
                 type="number"
-                value={formData.precio_litro_usd || 0.42}
+                value={formData.precio_litro_usd ?? 0.42}
                 onChange={(e) => handleInputChange("precio_litro_usd", parseFloat(e.target.value))}
                 step="0.01"
               />
@@ -272,7 +212,7 @@ export default function Configuracion() {
               <Label>Días Gestación</Label>
               <Input
                 type="number"
-                value={formData.dias_gestacion || 280}
+                value={formData.dias_gestacion ?? 280}
                 onChange={(e) => handleInputChange("dias_gestacion", parseInt(e.target.value))}
               />
             </div>
@@ -280,7 +220,7 @@ export default function Configuracion() {
               <Label>Chequeo Post-IA (días)</Label>
               <Input
                 type="number"
-                value={formData.dias_chequeo_post_inseminacion || 35}
+                value={formData.dias_chequeo_post_inseminacion ?? 35}
                 onChange={(e) => handleInputChange("dias_chequeo_post_inseminacion", parseInt(e.target.value))}
               />
             </div>
@@ -294,81 +234,80 @@ export default function Configuracion() {
           </div>
         </div>
       </Card>
+
       {canManageUsers && (
-      <Card className="p-6 border border-border">
-        <div className="space-y-4">
-          <div>
-            <h2 className="font-semibold text-foreground flex items-center gap-2">
-              <UserPlus className="w-5 h-5 text-primary" />
-              Usuarios de la finca
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Invitá personas para que accedan a esta misma finca.
-            </p>
-          </div>
-
-          <div>
-            <Label>Email</Label>
-            <Input
-              type="email"
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-              placeholder="empleado@email.com"
-            />
-          </div>
-
-          <div>
-            <Label>Rol</Label>
-            <select
-              value={inviteRole}
-              onChange={(e) => setInviteRole(e.target.value)}
-              className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-            >
-              <option value="worker">Empleado</option>
-              <option value="admin">Administrador</option>
-              <option value="owner">Owner</option>
-            </select>
-          </div>
-
-          
-
-          <Button
-            onClick={handleInviteUser}
-            disabled={!inviteEmail || !fincaId}
-            className="gap-2"
-          >
-            <UserPlus className="w-4 h-4" />
-            Invitar usuario
-          </Button>
-
-          {usuariosFinca.length > 0 && (
-            <div className="pt-4 border-t border-border">
-              <h3 className="font-medium mb-3">Usuarios actuales</h3>
-
-              <div className="space-y-2">
-                {usuariosFinca.map((usuario) => (
-                  <div
-                    key={usuario.id}
-                    className="flex items-center justify-between rounded-lg border border-border p-3"
-                  >
-                    <div>
-                      <p className="font-medium">{usuario.email}</p>
-                    </div>
-
-                    <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
-                      {usuario.role === "owner"
-                        ? "Owner"
-                        : usuario.role === "admin"
-                        ? "Administrador"
-                        : "Empleado"}
-                    </span>
-                  </div>
-                ))}
-              </div>
+        <Card className="p-6 border border-border">
+          <div className="space-y-4">
+            <div>
+              <h2 className="font-semibold text-foreground flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-primary" />
+                Usuarios de la finca
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Invitá personas para que accedan a esta misma finca.
+              </p>
             </div>
-          )}
-        </div>
-      </Card>
+
+            <div>
+              <Label>Email</Label>
+              <Input
+                type="email"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="empleado@email.com"
+              />
+            </div>
+
+            <div>
+              <Label>Rol</Label>
+              <select
+                value={inviteRole}
+                onChange={(e) => setInviteRole(e.target.value)}
+                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="worker">Empleado</option>
+                <option value="admin">Administrador</option>
+                <option value="owner">Owner</option>
+              </select>
+            </div>
+
+            <Button
+              onClick={handleInviteUser}
+              disabled={!inviteEmail || !fincaId}
+              className="gap-2"
+            >
+              <UserPlus className="w-4 h-4" />
+              Invitar usuario
+            </Button>
+
+            {usuariosFinca.length > 0 && (
+              <div className="pt-4 border-t border-border">
+                <h3 className="font-medium mb-3">Usuarios actuales</h3>
+
+                <div className="space-y-2">
+                  {usuariosFinca.map((usuario) => (
+                    <div
+                      key={usuario.id}
+                      className="flex items-center justify-between rounded-lg border border-border p-3"
+                    >
+                      <div>
+                        <p className="font-medium">{usuario.email}</p>
+                      </div>
+
+                      <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
+                        {usuario.role === "owner"
+                          ? "Owner"
+                          : usuario.role === "admin"
+                          ? "Administrador"
+                          : "Empleado"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </Card>
       )}
 
       <Card className="p-6 border border-border bg-accent/5">

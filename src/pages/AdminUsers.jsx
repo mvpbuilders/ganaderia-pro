@@ -1,41 +1,19 @@
-import { useEffect, useMemo, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { useQuery } from "@tanstack/react-query";
+import { adminService, ADMIN_OVERVIEW_QUERY_KEY } from "@/services/adminService";
 
 export default function AdminUsers() {
-  const [data, setData] = useState(null);
+  const { data, isLoading } = useQuery({
+    queryKey: ADMIN_OVERVIEW_QUERY_KEY,
+    queryFn: adminService.overview,
+  });
 
-  useEffect(() => {
-    async function loadUsers() {
-      const [usuariosFinca, fincas] = await Promise.all([
-        base44.entities.FincaUsuario.list(),
-        base44.entities.Finca.list(),
-      ]);
+  if (isLoading || !data) return <div className="p-6">Cargando usuarios...</div>;
 
-      setData({ usuariosFinca, fincas });
-    }
-
-    loadUsers();
-  }, []);
-
-  const rows = useMemo(() => {
-    if (!data) return [];
-
-    return data.usuariosFinca.map((usuario) => {
-      const finca = data.fincas.find((f) => f.id === usuario.finca_id);
-
-      return {
-        ...usuario,
-        finca_nombre: finca?.nombre || "-",
-      };
-    });
-  }, [data]);
-
-  if (!data) return <div className="p-6">Cargando usuarios...</div>;
-
+  const rows = data.usuarios;
   const owners = rows.filter((u) => u.role === "owner").length;
   const admins = rows.filter((u) => u.role === "admin").length;
   const managers = rows.filter((u) => u.role === "manager").length;
-  const employees = rows.filter((u) => u.role === "employee").length;
+  const employees = rows.filter((u) => ["employee", "worker"].includes(u.role)).length;
 
   return (
     <div className="p-6 space-y-6">
@@ -72,8 +50,8 @@ export default function AdminUsers() {
                   <td className="p-3">{usuario.role}</td>
                   <td className="p-3">{usuario.finca_nombre}</td>
                   <td className="p-3">
-                    {usuario.created_date
-                      ? new Date(usuario.created_date).toLocaleDateString("es-AR")
+                    {usuario.created_at
+                      ? new Date(usuario.created_at).toLocaleDateString("es-AR")
                       : "-"}
                   </td>
                 </tr>

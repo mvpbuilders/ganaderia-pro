@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { eventoService, eventosQueryKey } from "@/services/eventoService";
+import { animalService, ANIMALS_QUERY_KEY } from "@/services/animalService";
 import { getCurrentFinca } from "@/lib/current-finca";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { getMonthName, formatDate } from "@/lib/utils";
@@ -27,25 +28,15 @@ export default function Calendario() {
   const fincaId = fincaData?.finca?.id;
 
   const { data: eventos = [] } = useQuery({
-    queryKey: ['eventos', fincaId],
+    queryKey: eventosQueryKey({ limit: 200 }),
     enabled: !!fincaId,
-    queryFn: () =>
-      base44.entities.Evento.filter(
-        { finca_id: fincaId },
-        '-fecha',
-        200
-      ),
+    queryFn: () => eventoService.list({ limit: 200 }),
   });
 
   const { data: animales = [] } = useQuery({
-    queryKey: ['animales', fincaId],
+    queryKey: ANIMALS_QUERY_KEY,
     enabled: !!fincaId,
-    queryFn: () =>
-      base44.entities.Animal.filter(
-        { finca_id: fincaId },
-        '-created_date',
-        500
-      ),
+    queryFn: animalService.list,
   });
 
   const year = currentDate.getFullYear();

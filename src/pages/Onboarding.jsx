@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { fincaService } from "@/services/fincaService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -16,23 +16,8 @@ export default function Onboarding() {
     setLoading(true);
 
     try {
-      const user = await base44.auth.me();
-      console.log("ONBOARDING USER", user);
-
-      const finca = await base44.entities.Finca.create({
-        nombre,
-        owner_user_id: user.id
-      });
-      console.log("FINCA CREADA", finca);
-
-      const relacion = await base44.entities.FincaUsuario.create({
-        finca_id: finca.id,
-        user_id: user.id,
-        email: user.email,
-        role: "owner"
-      });
-      console.log("RELACION CREADA", relacion);
-
+      // El backend crea la finca y la membresía owner para el usuario autenticado.
+      await fincaService.create(nombre);
       navigate("/");
       window.location.reload();
     } catch (error) {

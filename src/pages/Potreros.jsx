@@ -1,54 +1,47 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
-import { formatDate, getEstadoColor } from "@/lib/utils";
-import { Plus, Edit, MapPin } from "lucide-react";
+import { POTREROS_QUERY_KEY, potreroService } from "@/services/potreroService";
+import { formatDate } from "@/lib/utils";
+import { Plus, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import EstadoBadge from "@/components/shared/EstadoBadge";
 import PotreroModal from "@/components/potreros/PotreroModal";
-import { getCurrentFinca } from "@/lib/current-finca";
+
+const estadoColors = {
+  "Disponible":  "border-green-200 bg-green-50",
+  "Pastoreando": "border-blue-200 bg-blue-50",
+  "Descansando": "border-yellow-200 bg-yellow-50",
+  "Critico":     "border-red-200 bg-red-50",
+};
+
+const estadoEmoji = {
+  "Disponible":  "✅",
+  "Pastoreando": "🐄",
+  "Descansando": "😴",
+  "Critico":     "⚠️",
+};
+
+const ESTADOS_RESUMEN = ["Disponible", "Pastoreando", "Descansando", "Critico"];
 
 export default function Potreros() {
   const [showModal, setShowModal] = useState(false);
   const [editando, setEditando] = useState(null);
   const queryClient = useQueryClient();
-  const { data: fincaData } = useQuery({
-    queryKey: ['current-finca'],
-    queryFn: getCurrentFinca,
-  });
-
-  const fincaId = fincaData?.finca?.id;
 
   const { data: potreros = [], isLoading } = useQuery({
-    queryKey: ['potreros', fincaId],
-    enabled: !!fincaId,
-    queryFn: () =>
-      base44.entities.Potrero.filter(
-        { finca_id: fincaId },
-        '-created_date',
-        100
-      ),
+    queryKey: POTREROS_QUERY_KEY,
+    queryFn: potreroService.list,
   });
 
-  const estadoColors = {
-    "Disponible": "border-green-200 bg-green-50",
-    "Pastoreando": "border-blue-200 bg-blue-50",
-    "Descansando": "border-yellow-200 bg-yellow-50",
-    "Critico": "border-red-200 bg-red-50",
-  };
+  const resumen = ESTADOS_RESUMEN.reduce((acc, estado) => {
+    acc[estado] = potreros.filter(p => p.estado === estado).length;
+    return acc;
+  }, {});
 
-  const estadoEmoji = {
-    "Disponible": "✅",
-    "Pastoreando": "🐄",
-    "Descansando": "😴",
-    "Critico": "⚠️",
-  };
-
-  const resumen = {
-    Disponible: potreros.filter(p => p.estado === "Disponible").length,
-    Pastoreando: potreros.filter(p => p.estado === "Pastoreando").length,
-    Descansando: potreros.filter(p => p.estado === "Descansando").length,
-    Critico: potreros.filter(p => p.estado === "Critico").length,
+  const handleSave = () => {
+    queryClient.invalidateQueries({ queryKey: POTREROS_QUERY_KEY });
+    setShowModal(false);
+    setEditando(null);
   };
 
   return (
@@ -66,19 +59,16 @@ export default function Potreros() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {Object.entries(resumen).map(([estado, count]) => {
-          const colors = getEstadoColor(estado);
-          return (
-            <div key={estado} className={`rounded-xl border p-4 ${estadoColors[estado]}`}>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-lg">{estadoEmoji[estado]}</span>
-                <span className="text-xs font-semibold text-muted-foreground">{estado}</span>
-              </div>
-              <p className="text-2xl font-bold text-foreground">{count}</p>
-              <p className="text-xs text-muted-foreground">potreros</p>
+        {ESTADOS_RESUMEN.map(estado => (
+          <div key={estado} className={`rounded-xl border p-4 ${estadoColors[estado]}`}>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-lg">{estadoEmoji[estado]}</span>
+              <span className="text-xs font-semibold text-muted-foreground">{estado}</span>
             </div>
-          );
-        })}
+            <p className="text-2xl font-bold text-foreground">{resumen[estado]}</p>
+            <p className="text-xs text-muted-foreground">potreros</p>
+          </div>
+        ))}
       </div>
 
       {/* Grid */}
@@ -106,7 +96,7 @@ export default function Potreros() {
               </div>
 
               <div className="space-y-2 mb-4">
-                {potrero.hectareas && (
+                {potrero.hectareas != null && (
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Hectáreas</span>
                     <span className="font-semibold text-foreground">{potrero.hectareas} ha</span>
@@ -158,9 +148,8 @@ export default function Potreros() {
       {showModal && (
         <PotreroModal
           potrero={editando}
-          fincaId={fincaId}
           onClose={() => { setShowModal(false); setEditando(null); }}
-          onSave={() => { queryClient.invalidateQueries(['potreros', fincaId]); setShowModal(false); }}
+          onSave={handleSave}
         />
       )}
     </div>
