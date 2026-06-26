@@ -26,6 +26,25 @@
     "animal_nombre": {
       "type": "string"
     },
+
+    "inventario_ia_id": {
+  "type": "string"
+},
+"toro_id": {
+  "type": "string"
+},
+"toro_nombre": {
+  "type": "string"
+},
+"pajuela_proveedor": {
+  "type": "string"
+},
+"pajuela_sexada": {
+  "type": "boolean"
+},
+"pajuela_canastilla": {
+  "type": "string"
+},
     "fecha": {
       "type": "string",
       "format": "date"
