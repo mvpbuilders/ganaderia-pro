@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { animalService } from "@/services/animalService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,7 @@ const RAZAS = ["Holstein", "Jersey", "Brown Swiss", "Montbeliarde", "Mestiza", "
 const ESTADOS = ["Ordeño", "Seca", "Preparto", "Ternera", "Vacona", "Toro", "Enfermería", "Vendida", "Muerta"];
 const ESTADOS_REPRO = ["Abierta", "En celo", "Inseminada", "Pendiente chequeo", "Preñada positiva", "Negativa", "Dudosa", "Aborto"];
 
-export default function AnimalModal({ animal, fincaId, animales = [], onClose, onSave }) {
+export default function AnimalModal({ animal, animales = [], onClose, onSave }) {
   const [form, setForm] = useState(animal ? {
     ...animal,
     raza: animal.raza || "Holstein",
@@ -76,7 +76,6 @@ const handleSave = async () => {
     const pm = form.produccion_pm ? Number(form.produccion_pm) : undefined;
     const data = {
       ...form,
-      finca_id: fincaId,
       peso_kg: form.peso_kg ? Number(form.peso_kg) : undefined,
       produccion_am: am,
       produccion_pm: pm,
@@ -90,19 +89,16 @@ const handleSave = async () => {
       let result;
 
      if (animal?.id) {
-        result = await base44.entities.Animal.update(animal.id, data);
+        result = await animalService.update(animal.id, data);
        
       } else {
-        result = await base44.entities.Animal.create(data);
+        result = await animalService.create(data);
         
       }
 
       setLoading(false);
 
-    onSave({
-      ...data,
-      id: animal?.id || result?.id,
-    });
+    onSave(result);
 };
 
   return (

@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
 import Onboarding from "./pages/Onboarding";
 import CurrentUser from './pages/CurrentUser';
 import { Toaster } from "@/components/ui/toaster"
@@ -34,27 +33,16 @@ import AdminRoute from '@/components/AdminRoute';
 // import AdminTest from './pages/AdminTest';
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, authChecked, user } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings, authError, authChecked, user, currentFinca, membership } = useAuth();
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
   useEffect(() => {
-    const checkFinca = async () => {
-      try {
-        const user = await base44.auth.me();
-        const relaciones = await base44.entities.FincaUsuario.filter({
-          email: user.email
-        });
-        setNeedsOnboarding(relaciones.length === 0);
-      } catch (error) {
-        // si falla, mandar al login
-        window.location.href = "/login";
-      }
-    };
+    if (!authChecked || !user) return;
 
-    checkFinca();
-  }, []);
+    setNeedsOnboarding(!currentFinca || !membership);
+  }, [authChecked, user, currentFinca, membership]);
 
-  if (isLoadingPublicSettings || isLoadingAuth || !authChecked || !user) {
+  if (isLoadingPublicSettings || isLoadingAuth || !authChecked) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
@@ -75,6 +63,11 @@ const AuthenticatedApp = () => {
       window.location.href = "/login";
       return null;
     }
+  }
+
+  if (!user) {
+    window.location.href = "/login";
+    return null;
   }
 
   if (needsOnboarding === null) {
