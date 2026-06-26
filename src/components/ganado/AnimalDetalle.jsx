@@ -312,10 +312,59 @@ const hijos = animalesFinca.filter(a =>
                   <div key={i} className="flex items-start gap-3 px-4 py-3">
                     <span className="text-xl">{TIPO_EMOJI[ev.tipo] || '📋'}</span>
                     <div className="flex-1">
-                      <p className="text-sm font-semibold text-foreground">{ev.tipo}</p>
-                      {ev.veterinario && <p className="text-xs text-muted-foreground">Vet: {ev.veterinario}</p>}
-                      {ev.resultado && <p className="text-xs text-blue-600 font-semibold">Resultado: {ev.resultado}</p>}
-                      {ev.notas && <p className="text-xs text-muted-foreground">{ev.notas}</p>}
+                      <p className="text-sm font-semibold text-foreground">
+  {ev.tipo === "Inseminacion"
+    ? `${ev.numero_inseminacion ? `IA #${ev.numero_inseminacion} · ` : ""}Inseminación`
+    : ev.tipo}
+</p>
+
+{ev.tipo === "Inseminacion" && (
+  <div className="mt-1 space-y-0.5">
+    {ev.toro_nombre && (
+      <p className="text-xs text-muted-foreground">
+        Toro: {ev.toro_nombre}
+      </p>
+    )}
+
+    {ev.pajuela_proveedor && (
+      <p className="text-xs text-muted-foreground">
+        Proveedor: {ev.pajuela_proveedor}
+      </p>
+    )}
+
+    {typeof ev.pajuela_sexada === "boolean" && (
+      <p className="text-xs text-muted-foreground">
+        Tipo: {ev.pajuela_sexada ? "Sexada" : "Convencional"}
+      </p>
+    )}
+
+    {ev.pajuela_canastilla && (
+      <p className="text-xs text-muted-foreground">
+        Canastilla: {ev.pajuela_canastilla}
+      </p>
+    )}
+
+    {ev.inventario_ia_id && (
+      <p className="text-xs text-muted-foreground">
+        Lote IA: {ev.inventario_ia_id}
+      </p>
+    )}
+  </div>
+)}
+
+{ev.veterinario && (
+  <p className="text-xs text-muted-foreground">Vet: {ev.veterinario}</p>
+)}
+
+{ev.resultado && (
+  <p className="text-xs text-blue-600 font-semibold">
+    Resultado: {ev.resultado}
+  </p>
+)}
+
+{ev.notas && (
+  <p className="text-xs text-muted-foreground">{ev.notas}</p>
+)}
                     </div>
                     <span className="text-xs text-muted-foreground">{formatDate(ev.fecha)}</span>
                   </div>
