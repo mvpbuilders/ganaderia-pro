@@ -346,6 +346,28 @@ const hijos = animalesFinca.filter(a =>
   </div>
 )}
 
+{ev.tipo === "Parto" && (
+  <div className="mt-1 space-y-0.5">
+    {ev.nombre_cria && (
+      <p className="text-xs text-muted-foreground">
+        Cría: {ev.nombre_cria}
+      </p>
+    )}
+
+    {ev.sexo_cria && (
+      <p className="text-xs text-muted-foreground">
+        Sexo: {ev.sexo_cria}
+      </p>
+    )}
+
+    {ev.peso_cria && (
+      <p className="text-xs text-muted-foreground">
+        Peso al nacer: {ev.peso_cria} kg
+      </p>
+    )}
+  </div>
+)}
+
 {ev.veterinario && (
   <p className="text-xs text-muted-foreground">Vet: {ev.veterinario}</p>
 )}
