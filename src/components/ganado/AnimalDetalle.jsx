@@ -19,9 +19,9 @@ export default function AnimalDetalle({ animal, onBack, onEdit, onSelectAnimal }
   const fincaId = animal?.finca_id;
 
   const { data: eventos = [], refetch: refetchEventos } = useQuery({
-    queryKey: eventosQueryKey({ animalId: animal.id, limit: 100 }),
+    queryKey: eventosQueryKey({ animalId: animal.id, scope: "timeline" }),
     enabled: !!animal?.id,
-    queryFn: () => eventoService.list({ animal_id: animal.id, limit: 100 }),
+    queryFn: () => eventoService.list({ animal_id: animal.id }),
   });
 
   const { data: registrosLeche = [] } = useQuery({
