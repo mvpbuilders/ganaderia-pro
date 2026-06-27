@@ -87,6 +87,41 @@ const hijos = animalesFinca.filter(a =>
   const eventosOrdenados = [...eventos].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
   const eventosSalud = eventosOrdenados.filter(e => ["Enfermedad", "Tratamiento", "Vacuna", "Chequeo veterinario"].includes(e.tipo));
   const eventosRepro = eventosOrdenados.filter(e => ["Parto", "Inseminacion", "Celo", "Chequeo veterinario"].includes(e.tipo));
+  const parseEventDate = (fecha) => {
+    if (!fecha) return null;
+
+    const parsed = new Date(`${fecha}T00:00:00`);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+  const diffDays = (later, earlier) => {
+    const laterDate = parseEventDate(later);
+    const earlierDate = parseEventDate(earlier);
+    if (!laterDate || !earlierDate) return null;
+
+    const diff = Math.round((laterDate - earlierDate) / 86400000);
+    return diff < 0 ? null : diff;
+  };
+  const intervalosReproductivos = new Map();
+  const eventosReproCronologicos = eventosRepro.filter((ev) => parseEventDate(ev.fecha)).sort((a, b) => {
+    const dateDiff = parseEventDate(a.fecha) - parseEventDate(b.fecha);
+    if (dateDiff !== 0) return dateDiff;
+
+    return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+  });
+  const ultimoEventoPorTipo = {};
+
+  eventosReproCronologicos.forEach((ev) => {
+    if (!["Inseminacion", "Parto"].includes(ev.tipo)) return;
+
+    const anterior = ultimoEventoPorTipo[ev.tipo];
+    const intervalo = anterior ? diffDays(ev.fecha, anterior.fecha) : null;
+
+    if (intervalo !== null) {
+      intervalosReproductivos.set(ev, intervalo);
+    }
+
+    ultimoEventoPorTipo[ev.tipo] = ev;
+  });
 
   const TIPO_EMOJI = {
     Parto: "🐣", Inseminacion: "🧬", Celo: "💕", "Chequeo veterinario": "🩺",
@@ -343,6 +378,14 @@ const hijos = animalesFinca.filter(a =>
         Lote IA: {ev.inventario_ia_id}
       </p>
     )}
+
+    {typeof intervalosReproductivos.get(ev) === "number" && (
+      <p className="text-xs text-muted-foreground">
+        {intervalosReproductivos.get(ev) === 0
+          ? "Intervalo: mismo día"
+          : `Intervalo: ${intervalosReproductivos.get(ev)} días desde IA anterior`}
+      </p>
+    )}
   </div>
 )}
 
@@ -363,6 +406,14 @@ const hijos = animalesFinca.filter(a =>
     {ev.peso_cria && (
       <p className="text-xs text-muted-foreground">
         Peso al nacer: {ev.peso_cria} kg
+      </p>
+    )}
+
+    {typeof intervalosReproductivos.get(ev) === "number" && (
+      <p className="text-xs text-muted-foreground">
+        {intervalosReproductivos.get(ev) === 0
+          ? "Intervalo: mismo día"
+          : `Intervalo entre partos: ${intervalosReproductivos.get(ev)} días`}
       </p>
     )}
   </div>
