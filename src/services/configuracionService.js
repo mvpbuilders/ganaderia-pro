@@ -8,6 +8,7 @@ const NUMBER_FIELDS = [
   "hectareas_totales",
   "dias_gestacion",
   "dias_chequeo_post_inseminacion",
+  "dias_para_secado",
 ];
 
 function toNum(value) {

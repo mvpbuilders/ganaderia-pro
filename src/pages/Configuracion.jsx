@@ -217,7 +217,7 @@ export default function Configuracion() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <Label>Hectáreas Totales</Label>
               <Input
@@ -240,6 +240,14 @@ export default function Configuracion() {
                 type="number"
                 value={formData.dias_chequeo_post_inseminacion ?? 35}
                 onChange={(e) => handleInputChange("dias_chequeo_post_inseminacion", parseInt(e.target.value))}
+              />
+            </div>
+            <div>
+              <Label>Días para Secado</Label>
+              <Input
+                type="number"
+                value={formData.dias_para_secado ?? 210}
+                onChange={(e) => handleInputChange("dias_para_secado", parseInt(e.target.value))}
               />
             </div>
           </div>
