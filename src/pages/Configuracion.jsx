@@ -5,6 +5,7 @@ import { configuracionService, CONFIGURACION_QUERY_KEY } from "@/services/config
 import { fincaUserService, FINCA_USERS_QUERY_KEY } from "@/services/fincaUserService";
 import { animalService } from "@/services/animalService";
 import { eventoService } from "@/services/eventoService";
+import { inventarioIAService, INVENTARIO_IA_QUERY_KEY } from "@/services/inventarioIAService";
 import { milkRecordService } from "@/services/milkRecordService";
 import { financialTransactionService } from "@/services/financialTransactionService";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,12 @@ export default function Configuracion() {
     queryFn: animalService.list,
   });
 
+  const { data: inventarioIA = [] } = useQuery({
+    queryKey: [...INVENTARIO_IA_QUERY_KEY, "disponible"],
+    enabled: !!fincaId,
+    queryFn: () => inventarioIAService.list({ disponibles: true }),
+  });
+
   const animalesOrdenio = animales.filter((a) => a.estado === "Ordeño");
 
   const saveMutation = useMutation({
@@ -89,8 +96,18 @@ export default function Configuracion() {
 
       // El backend resuelve finca_id desde el token; el frontend nunca lo envía.
       const registroLeche = generateRegistroLeche(animalIds, animalNames);
-      const eventos = generateEventos(animalIds, animalNames);
+      const stockPajuelas = inventarioIA.reduce(
+        (sum, item) => sum + Number(item.stock_actual || 0),
+        0
+      );
+      const eventos = generateEventos(animalIds, animalNames, inventarioIA);
       const transacciones = generateTransacciones();
+
+      if (stockPajuelas === 0) {
+        toast.warning("Datos demo: se omitieron inseminaciones porque no hay pajuelas disponibles.");
+      } else if (stockPajuelas < 8) {
+        toast.warning(`Datos demo: solo se generaron ${stockPajuelas} inseminaciones con pajuela disponible.`);
+      }
 
       await milkRecordService.bulkUpsert(registroLeche);
       await Promise.all(eventos.map((e) => eventoService.create(e)));
@@ -99,6 +116,7 @@ export default function Configuracion() {
       queryClient.invalidateQueries({ queryKey: ["milk_records"] });
       queryClient.invalidateQueries({ queryKey: ["eventos"] });
       queryClient.invalidateQueries({ queryKey: ["financial_transactions"] });
+      queryClient.invalidateQueries({ queryKey: INVENTARIO_IA_QUERY_KEY });
 
       toast.success(
         `✅ Datos generados: ${registroLeche.length} registros lecheros, ${eventos.length} eventos, ${transacciones.length} transacciones`

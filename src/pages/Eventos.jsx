@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { eventoService, EVENTOS_QUERY_KEY, eventosQueryKey } from "@/services/eventoService";
 import { animalService, ANIMALS_QUERY_KEY } from "@/services/animalService";
-import { formatDate, getTipoEventoColor } from "@/lib/utils";
+import { inventarioIAService, INVENTARIO_IA_QUERY_KEY } from "@/services/inventarioIAService";
+import { formatDate } from "@/lib/utils";
 import { ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +33,7 @@ export default function Eventos() {
     medicamento: "", dosis: "", notas: "",
     requiere_retiro_leche: false, dias_retiro: "",
     sexo_cria: "Hembra", nombre_cria: "", peso_cria: "",
-    resultado: "", grupo_nuevo: "",
+    resultado: "", grupo_nuevo: "", inventario_ia_id: "",
   });
   const set = (f, v) => setForm(p => ({ ...p, [f]: v }));
   const { data: fincaData } = useQuery({
@@ -54,9 +55,24 @@ export default function Eventos() {
     queryFn: () => eventoService.list({ limit: 50 }),
   });
 
+  const { data: inventarioIA = [] } = useQuery({
+    queryKey: [...INVENTARIO_IA_QUERY_KEY, "disponible"],
+    enabled: !!fincaId,
+    queryFn: () => inventarioIAService.list({ disponibles: true }),
+  });
+
   const animalSeleccionado = animales.find(a => a.nombre === form.animal_nombre);
+  const pajuelasDisponibles = inventarioIA.filter((item) => Number(item.stock_actual || 0) > 0);
+  const pajuelaSeleccionada = pajuelasDisponibles.find(
+    (item) => String(item.id) === String(form.inventario_ia_id)
+  );
 
   const handleSave = async () => {
+    if (form.tipo === "Inseminacion" && !pajuelaSeleccionada) {
+      toast.error("Seleccioná una pajuela disponible");
+      return;
+    }
+
     setLoading(true);
 
     // Toda la lógica de negocio (actualización del animal, fechas reproductivas,
@@ -81,6 +97,7 @@ export default function Eventos() {
       dias_retiro: form.tipo === "Tratamiento" && form.dias_retiro ? Number(form.dias_retiro) : 0,
       resultado: form.tipo === "Chequeo veterinario" ? form.resultado : null,
       grupo_nuevo: form.tipo === "Cambio de grupo" ? form.grupo_nuevo : null,
+      inventario_ia_id: form.tipo === "Inseminacion" ? pajuelaSeleccionada.id : null,
     };
 
     try {
@@ -90,6 +107,7 @@ export default function Eventos() {
       setForm(f => ({ ...f, animal_nombre: "", valor_litros: "", valor_usd: "", descripcion: "", notas: "" }));
       queryClient.invalidateQueries({ queryKey: EVENTOS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: ANIMALS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: INVENTARIO_IA_QUERY_KEY });
       setTimeout(() => setSuccess(false), 2000);
     } catch (error) {
       toast.error(error.message || "Error al registrar el evento");
@@ -187,6 +205,58 @@ export default function Eventos() {
               <Label className="text-xs font-semibold mb-1.5 block">Nombre de la cría</Label>
               <Input value={form.nombre_cria} onChange={e => set("nombre_cria", e.target.value)} placeholder="Opcional" />
             </div>
+          </div>
+        )}
+
+        {form.tipo === "Inseminacion" && (
+          <div>
+            <Label className="text-xs font-semibold mb-1.5 block">Pajuela disponible</Label>
+            <Select
+              value={form.inventario_ia_id}
+              onValueChange={(value) => set("inventario_ia_id", value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar pajuela" />
+              </SelectTrigger>
+              <SelectContent>
+                {pajuelasDisponibles.map((item) => (
+                  <SelectItem key={item.id} value={String(item.id)}>
+                    {item.toro_nombre || "Toro sin nombre"} · Stock {item.stock_actual}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {pajuelasDisponibles.length === 0 && (
+              <p className="mt-2 text-xs text-red-600">
+                No hay pajuelas disponibles con stock.
+              </p>
+            )}
+
+            {pajuelaSeleccionada && (
+              <div className="mt-3 rounded-lg border border-border bg-muted/30 p-3 text-xs space-y-1">
+                <p>
+                  <span className="font-semibold">Toro:</span>{" "}
+                  {pajuelaSeleccionada.toro_nombre || "-"}
+                </p>
+                <p>
+                  <span className="font-semibold">Proveedor:</span>{" "}
+                  {pajuelaSeleccionada.proveedor || "-"}
+                </p>
+                <p>
+                  <span className="font-semibold">Tipo:</span>{" "}
+                  {pajuelaSeleccionada.sexada ? "Sexada" : "Convencional"}
+                </p>
+                <p>
+                  <span className="font-semibold">Canastilla:</span>{" "}
+                  {pajuelaSeleccionada.canastilla || "-"}
+                </p>
+                <p>
+                  <span className="font-semibold">Stock actual:</span>{" "}
+                  {pajuelaSeleccionada.stock_actual ?? 0}
+                </p>
+              </div>
+            )}
           </div>
         )}
 

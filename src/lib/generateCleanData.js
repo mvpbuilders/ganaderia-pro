@@ -75,7 +75,7 @@ export function generateRegistroLeche(animalIds, animalNames) {
 }
 
 // Generate farm-level production totals + events
-export function generateEventos(animalIds, animalNames) {
+export function generateEventos(animalIds, animalNames, inventarioIA = []) {
   const eventos = [];
   const dates = getDateRange();
   
@@ -101,19 +101,25 @@ export function generateEventos(animalIds, animalNames) {
     { animalName: "Rosa", fecha: "2026-04-15" },
     { animalName: "Nadia", fecha: "2026-04-22" },
   ];
+  const pajuelasDisponibles = inventarioIA.flatMap((item) =>
+    Array.from({ length: Number(item.stock_actual || 0) }, () => item)
+  );
   
-  inseminationDates.forEach(({ animalName, fecha }) => {
+  inseminationDates.slice(0, pajuelasDisponibles.length).forEach(({ animalName, fecha }, index) => {
+    const pajuela = pajuelasDisponibles[index];
+
     eventos.push({
       tipo: "Inseminacion",
       animal_nombre: animalName,
       fecha,
       descripcion: "Inseminación artificial – semen Holstein importado",
       veterinario: veterinarios[rb(0, veterinarios.length - 1)],
+      inventario_ia_id: pajuela.id,
     });
   });
 
   // Pregnancy confirmations (35 days post-insemination)
-  inseminationDates.forEach(({ animalName, fecha }) => {
+  inseminationDates.slice(0, pajuelasDisponibles.length).forEach(({ animalName, fecha }) => {
     const checkDate = new Date(fecha + "T12:00:00");
     checkDate.setDate(checkDate.getDate() + 35);
     const checkDateStr = checkDate.toISOString().split("T")[0];
