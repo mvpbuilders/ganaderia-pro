@@ -76,6 +76,7 @@ const handleSave = async () => {
     const pm = form.produccion_pm ? Number(form.produccion_pm) : undefined;
     const data = {
       ...form,
+      fecha_proxima_cria_override: form.fecha_proxima_cria || null,
       peso_kg: form.peso_kg ? Number(form.peso_kg) : undefined,
       produccion_am: am,
       produccion_pm: pm,
