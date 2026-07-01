@@ -445,6 +445,10 @@ const hijos = animalesFinca.filter(a =>
 {ev.notas && (
   <p className="text-xs text-muted-foreground">{ev.notas}</p>
 )}
+
+{ev.descripcion && ev.descripcion !== ev.notas && (
+  <p className="text-xs text-muted-foreground">{ev.descripcion}</p>
+)}
                     </div>
                     <span className="text-xs text-muted-foreground">{formatDate(ev.fecha)}</span>
                   </div>
