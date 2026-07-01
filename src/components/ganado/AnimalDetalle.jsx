@@ -10,7 +10,7 @@ import { ChevronLeft, Plus, Milk, Heart, Weight, Users, Calendar, AlertTriangle 
 import { Button } from "@/components/ui/button";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
-const TABS = ["General", "Registro Lechero", "Reproducción", "Salud", "Agrupamiento", "Pedigrí"];
+const TABS = ["General", "Registro Lechero", "Reproducción", "Salud", "Agrupamiento", "Pedigrí", "Historial"];
 
 export default function AnimalDetalle({ animal, onBack, onEdit, onSelectAnimal }) {
 
@@ -139,7 +139,7 @@ const hijos = animalesFinca.filter(a =>
   const TIPO_EMOJI = {
     Parto: "🐣", Inseminacion: "🧬", Celo: "💕", "Chequeo veterinario": "🩺",
     Tratamiento: "💊", Vacuna: "💉", Enfermedad: "🤒", "Cambio de grupo": "👥",
-    Produccion: "🥛", Muerte: "💀", Venta: "💰", Destete: "🍼"
+    Produccion: "🥛", Muerte: "💀", Venta: "💰", Destete: "🍼", Secado: "💤", Aborto: "⚠️", Otro: "📋"
   };
 
   return (
@@ -505,6 +505,92 @@ const hijos = animalesFinca.filter(a =>
                     </div>
                   );
                 })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+
+      {/* Historial */}
+      {tab === "Historial" && (
+        <div className="space-y-3">
+          <div className="bg-card rounded-xl border border-border overflow-hidden">
+            <div className="p-4 border-b border-border">
+              <h3 className="font-semibold text-foreground">Historial completo del animal</h3>
+            </div>
+
+            {eventosOrdenados.length === 0 ? (
+              <p className="text-center text-muted-foreground py-6 text-sm">
+                No existen eventos registrados para este animal.
+              </p>
+            ) : (
+              <div className="divide-y divide-border">
+                {eventosOrdenados.map((ev, i) => (
+                  <div key={ev.id || i} className="flex items-start gap-3 px-4 py-3">
+                    <span className="text-xl">{TIPO_EMOJI[ev.tipo] || "📋"}</span>
+
+                    <div className="flex-1 space-y-0.5">
+                      <p className="text-sm font-semibold text-foreground">
+                        {ev.tipo === "Inseminacion"
+                          ? `${ev.numero_inseminacion ? `IA #${ev.numero_inseminacion} · ` : ""}Inseminación`
+                          : ev.tipo}
+                      </p>
+
+                      {ev.tipo === "Inseminacion" && ev.toro_nombre && (
+                        <p className="text-xs text-muted-foreground">Toro: {ev.toro_nombre}</p>
+                      )}
+
+                      {ev.tipo === "Parto" && ev.nombre_cria && (
+                        <p className="text-xs text-muted-foreground">Cría: {ev.nombre_cria}</p>
+                      )}
+
+                      {ev.tipo === "Parto" && ev.sexo_cria && (
+                        <p className="text-xs text-muted-foreground">Sexo cría: {ev.sexo_cria}</p>
+                      )}
+
+                      {ev.resultado && (
+                        <p className="text-xs text-blue-600 font-semibold">Resultado: {ev.resultado}</p>
+                      )}
+
+                      {ev.medicamento && (
+                        <p className="text-xs text-muted-foreground">Medicamento/Vacuna: {ev.medicamento}</p>
+                      )}
+
+                      {ev.dosis && (
+                        <p className="text-xs text-muted-foreground">Dosis: {ev.dosis}</p>
+                      )}
+
+                      {ev.veterinario && (
+                        <p className="text-xs text-muted-foreground">Vet: {ev.veterinario}</p>
+                      )}
+
+                      {ev.grupo_anterior || ev.grupo_nuevo ? (
+                        <p className="text-xs text-muted-foreground">
+                          Grupo: {ev.grupo_anterior || "?"} → {ev.grupo_nuevo || "?"}
+                        </p>
+                      ) : null}
+
+                      {ev.descripcion && (
+                        <p className="text-xs text-muted-foreground">{ev.descripcion}</p>
+                      )}
+
+                      {ev.notas && ev.notas !== ev.descripcion && (
+                        <p className="text-xs text-muted-foreground">{ev.notas}</p>
+                      )}
+
+                      {ev.requiere_retiro_leche && (
+                        <p className="text-xs text-red-600 font-semibold">
+                          Retiro de leche: {ev.dias_retiro || 0} días
+                        </p>
+                      )}
+                    </div>
+
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      {formatDate(ev.fecha)}
+                    </span>
+                  </div>
+                ))}
               </div>
             )}
           </div>
