@@ -101,6 +101,19 @@ const hijos = animalesFinca.filter(a =>
     const diff = Math.round((laterDate - earlierDate) / 86400000);
     return diff < 0 ? null : diff;
   };
+  const addDays = (fecha, days) => {
+    const date = parseEventDate(fecha);
+    const daysNumber = Number(days || 0);
+    if (!date || !daysNumber) return null;
+
+    date.setDate(date.getDate() + daysNumber);
+    return date.toISOString().split("T")[0];
+  };
+  const retiroHastaEvento = (ev) => {
+    if (!ev.requiere_retiro_leche) return null;
+
+    return addDays(ev.fecha, ev.dias_retiro) || animal.retiro_leche_hasta;
+  };
   const intervalosReproductivos = new Map();
   const eventosReproCronologicos = eventosRepro.filter((ev) => parseEventDate(ev.fecha)).sort((a, b) => {
     const dateDiff = parseEventDate(a.fecha) - parseEventDate(b.fecha);
@@ -448,22 +461,46 @@ const hijos = animalesFinca.filter(a =>
           <div className="bg-card rounded-xl border border-border overflow-hidden">
             <div className="p-4 border-b border-border"><h3 className="font-semibold text-foreground">Historial de salud</h3></div>
             {eventosSalud.length === 0 ? (
-              <p className="text-center text-muted-foreground py-6 text-sm">Sin eventos de salud registrados</p>
+              <p className="text-center text-muted-foreground py-6 text-sm">No hay eventos de salud registrados para este animal.</p>
             ) : (
               <div className="divide-y divide-border">
-                {eventosSalud.map((ev, i) => (
-                  <div key={i} className="flex items-start gap-3 px-4 py-3">
-                    <span className="text-xl">{TIPO_EMOJI[ev.tipo] || '📋'}</span>
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-foreground">{ev.tipo}</p>
-                      {ev.medicamento && <p className="text-xs text-muted-foreground">💊 {ev.medicamento} {ev.dosis && `· ${ev.dosis}`}</p>}
-                      {ev.veterinario && <p className="text-xs text-muted-foreground">Vet: {ev.veterinario}</p>}
-                      {ev.requiere_retiro_leche && <p className="text-xs text-red-600 font-semibold">🚫 Retiro: {ev.dias_retiro} días</p>}
-                      {ev.notas && <p className="text-xs text-muted-foreground">{ev.notas}</p>}
+                {eventosSalud.map((ev, i) => {
+                  const retiroHasta = retiroHastaEvento(ev);
+
+                  return (
+                    <div key={ev.id || i} className="flex items-start gap-3 px-4 py-3">
+                      <span className="text-xl">{TIPO_EMOJI[ev.tipo] || '📋'}</span>
+                      <div className="flex-1 space-y-0.5">
+                        <p className="text-sm font-semibold text-foreground">{ev.tipo}</p>
+                        {ev.medicamento && (
+                          <p className="text-xs text-muted-foreground">
+                            Medicamento/Vacuna: {ev.medicamento}
+                          </p>
+                        )}
+                        {ev.dosis && (
+                          <p className="text-xs text-muted-foreground">Dosis: {ev.dosis}</p>
+                        )}
+                        {ev.veterinario && (
+                          <p className="text-xs text-muted-foreground">Vet: {ev.veterinario}</p>
+                        )}
+                        {ev.descripcion && (
+                          <p className="text-xs text-muted-foreground">{ev.descripcion}</p>
+                        )}
+                        {ev.notas && (
+                          <p className="text-xs text-muted-foreground">{ev.notas}</p>
+                        )}
+                        {ev.requiere_retiro_leche && (
+                          <div className="pt-1 text-xs text-red-600 font-semibold space-y-0.5">
+                            <p>Retiro de leche: sí</p>
+                            <p>Días de retiro: {ev.dias_retiro || 0}</p>
+                            {retiroHasta && <p>Retiro hasta: {formatDate(retiroHasta)}</p>}
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">{formatDate(ev.fecha)}</span>
                     </div>
-                    <span className="text-xs text-muted-foreground">{formatDate(ev.fecha)}</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
