@@ -27,9 +27,16 @@ export default function EventoRapidoModal({ animal, onClose, onSave }) {
   const [form, setForm] = useState({
     fecha: new Date().toISOString().split("T")[0],
     inventario_ia_id: "",
+    agregar_cria: false,
     sexo_cria: "Hembra",
     nombre_cria: "",
     peso_cria: "",
+    cria_nombre: "",
+    cria_arete: "",
+    cria_numero_id: "",
+    cria_numero_registro: "",
+    cria_sexo: "Hembra",
+    cria_fecha_nacimiento: new Date().toISOString().split("T")[0],
     veterinario: "",
     medicamento: "",
     dosis: "",
@@ -42,6 +49,25 @@ export default function EventoRapidoModal({ animal, onClose, onSave }) {
 
   const [loading, setLoading] = useState(false);
   const set = (f, v) => setForm((p) => ({ ...p, [f]: v }));
+  const setFecha = (value) => {
+    setForm((previous) => ({
+      ...previous,
+      fecha: value,
+      cria_fecha_nacimiento:
+        !previous.cria_fecha_nacimiento || previous.cria_fecha_nacimiento === previous.fecha
+          ? value
+          : previous.cria_fecha_nacimiento,
+    }));
+  };
+  const setAgregarCria = (value) => {
+    setForm((previous) => ({
+      ...previous,
+      agregar_cria: value,
+      cria_nombre: value && !previous.cria_nombre ? previous.nombre_cria : previous.cria_nombre,
+      cria_sexo: value ? previous.sexo_cria || previous.cria_sexo : previous.cria_sexo,
+      cria_fecha_nacimiento: previous.cria_fecha_nacimiento || previous.fecha,
+    }));
+  };
   const queryClient = useQueryClient();
 
   const { data: fincaData } = useQuery({
@@ -68,9 +94,19 @@ export default function EventoRapidoModal({ animal, onClose, onSave }) {
   );
 
   const handleSave = async () => {
+    const debeAgregarCria = accion === "parto" && form.agregar_cria === true;
+    const criaNombre = form.cria_nombre || form.nombre_cria;
+    const criaSexo = form.cria_sexo || form.sexo_cria;
+    const criaFechaNacimiento = form.cria_fecha_nacimiento || form.fecha;
+
     // Validación de UX; el backend también valida y descuenta el stock de forma atómica.
     if (accion === "inseminacion" && !pajuelaSeleccionada) {
       toast.error("Seleccioná una pajuela disponible");
+      return;
+    }
+
+    if (debeAgregarCria && !criaNombre && !form.cria_arete) {
+      toast.error("Ingresá al menos nombre o arete de la cría");
       return;
     }
 
@@ -89,9 +125,27 @@ export default function EventoRapidoModal({ animal, onClose, onSave }) {
     if (accion === "parto") {
       Object.assign(eventoData, {
         tipo: "Parto",
-        sexo_cria: form.sexo_cria,
-        nombre_cria: form.nombre_cria,
+        sexo_cria: debeAgregarCria ? criaSexo : form.sexo_cria,
+        nombre_cria: debeAgregarCria ? criaNombre : form.nombre_cria,
         peso_cria: form.peso_cria ? Number(form.peso_cria) : null,
+        crear_cria: debeAgregarCria,
+        agregar_cria: debeAgregarCria,
+        cria: debeAgregarCria
+          ? {
+              nombre: criaNombre || null,
+              arete: form.cria_arete || null,
+              numero_id: form.cria_numero_id || null,
+              numero_registro: form.cria_numero_registro || null,
+              sexo: criaSexo,
+              fecha_nacimiento: criaFechaNacimiento,
+            }
+          : null,
+        cria_nombre: debeAgregarCria ? criaNombre || null : null,
+        cria_arete: debeAgregarCria ? form.cria_arete || null : null,
+        cria_numero_id: debeAgregarCria ? form.cria_numero_id || null : null,
+        cria_numero_registro: debeAgregarCria ? form.cria_numero_registro || null : null,
+        cria_sexo: debeAgregarCria ? criaSexo : null,
+        cria_fecha_nacimiento: debeAgregarCria ? criaFechaNacimiento : null,
       });
     } else if (accion === "inseminacion") {
       Object.assign(eventoData, {
@@ -135,11 +189,16 @@ export default function EventoRapidoModal({ animal, onClose, onSave }) {
     }
 
     try {
+      console.log("EVENTO DATA ENVIADO", eventoData);
       await eventoService.create(eventoData);
       queryClient.invalidateQueries({ queryKey: EVENTOS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: ANIMALS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: INVENTARIO_IA_QUERY_KEY });
-      toast.success("Evento registrado correctamente");
+      toast.success(
+        debeAgregarCria
+          ? "Parto registrado y cría agregada al inventario"
+          : "Evento registrado correctamente"
+      );
       onSave();
     } catch (error) {
       toast.error(error.message || "Error al registrar el evento");
@@ -211,7 +270,7 @@ export default function EventoRapidoModal({ animal, onClose, onSave }) {
             <Input
               type="date"
               value={form.fecha}
-              onChange={(e) => set("fecha", e.target.value)}
+              onChange={(e) => setFecha(e.target.value)}
             />
           </div>
 
@@ -258,6 +317,118 @@ export default function EventoRapidoModal({ animal, onClose, onSave }) {
                   onChange={(e) => set("nombre_cria", e.target.value)}
                   placeholder="Opcional"
                 />
+              </div>
+
+              <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+                <div>
+                  <Label className="text-xs font-semibold mb-2 block">
+                    ¿Agregar cría al inventario de ganado?
+                  </Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAgregarCria(true)}
+                      className={`rounded-lg border px-3 py-2 text-sm font-semibold ${
+                        form.agregar_cria
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-card text-foreground"
+                      }`}
+                    >
+                      Sí
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAgregarCria(false)}
+                      className={`rounded-lg border px-3 py-2 text-sm font-semibold ${
+                        !form.agregar_cria
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-card text-foreground"
+                      }`}
+                    >
+                      No
+                    </button>
+                  </div>
+                </div>
+
+                {form.agregar_cria && (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs font-semibold mb-1.5 block">
+                          Nombre
+                        </Label>
+                        <Input
+                          value={form.cria_nombre}
+                          onChange={(e) => set("cria_nombre", e.target.value)}
+                          placeholder="Nombre"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-semibold mb-1.5 block">
+                          Arete
+                        </Label>
+                        <Input
+                          value={form.cria_arete}
+                          onChange={(e) => set("cria_arete", e.target.value)}
+                          placeholder="Arete"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs font-semibold mb-1.5 block">
+                          ID oficial
+                        </Label>
+                        <Input
+                          value={form.cria_numero_id}
+                          onChange={(e) => set("cria_numero_id", e.target.value)}
+                          placeholder="ID oficial"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-semibold mb-1.5 block">
+                          Número de registro
+                        </Label>
+                        <Input
+                          value={form.cria_numero_registro}
+                          onChange={(e) => set("cria_numero_registro", e.target.value)}
+                          placeholder="Registro"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs font-semibold mb-1.5 block">
+                          Sexo
+                        </Label>
+                        <Select
+                          value={form.cria_sexo}
+                          onValueChange={(v) => set("cria_sexo", v)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Hembra">Hembra</SelectItem>
+                            <SelectItem value="Macho">Macho</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs font-semibold mb-1.5 block">
+                          Fecha de nacimiento
+                        </Label>
+                        <Input
+                          type="date"
+                          value={form.cria_fecha_nacimiento}
+                          onChange={(e) => set("cria_fecha_nacimiento", e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           )}
