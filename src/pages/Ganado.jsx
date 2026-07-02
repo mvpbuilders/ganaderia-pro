@@ -28,6 +28,7 @@ export default function Ganado() {
   const [showModal, setShowModal] = useState(false);
   const [animalEditar, setAnimalEditar] = useState(null);
   const [animalDetalle, setAnimalDetalle] = useState(null);
+  const [orden, setOrden] = useState({ campo: "nombre", direccion: "asc" });
 
   const queryClient = useQueryClient();
   const hoy = new Date().toISOString().split('T')[0];
@@ -59,6 +60,53 @@ export default function Ganado() {
     return matchEstado && matchBusqueda;
   });
 
+  const produccionAnimal = (animal) => Number(animal.produccion_am || 0) + Number(animal.produccion_pm || 0);
+  const valorOrden = (animal, campo) => {
+    switch (campo) {
+      case "nombre":
+        return animal.nombre || "";
+      case "arete":
+        return animal.arete || "";
+      case "numero_id":
+        return animal.numero_id || "";
+      case "estado":
+        return animal.estado || "";
+      case "estado_reproductivo":
+        return animal.estado === "Toro" ? animal.tipo_toro || "" : animal.estado_reproductivo || "";
+      case "fecha_nacimiento":
+        return animal.fecha_nacimiento || "";
+      case "produccion":
+        return produccionAnimal(animal);
+      default:
+        return "";
+    }
+  };
+  const compararValores = (a, b) => {
+    if (typeof a === "number" || typeof b === "number") {
+      return Number(a || 0) - Number(b || 0);
+    }
+
+    return String(a || "").localeCompare(String(b || ""), "es", {
+      numeric: true,
+      sensitivity: "base",
+    });
+  };
+  const filtradosOrdenados = [...filtrados].sort((a, b) => {
+    const result = compararValores(valorOrden(a, orden.campo), valorOrden(b, orden.campo));
+    return orden.direccion === "asc" ? result : -result;
+  });
+  const cambiarOrden = (campo) => {
+    setOrden(prev => ({
+      campo,
+      direccion: prev.campo === campo && prev.direccion === "asc" ? "desc" : "asc",
+    }));
+  };
+  const indicadorOrden = (campo) => {
+    if (orden.campo !== campo) return "↕";
+    return orden.direccion === "asc" ? "↑" : "↓";
+  };
+  const headerOrdenClass = "text-left text-xs font-semibold text-muted-foreground px-4 py-3 hover:text-foreground transition-colors";
+
   const conteos = FILTROS.slice(1).reduce((acc, f) => {
     acc[f.key] = animales.filter(a => a.estado === f.key).length;
     return acc;
@@ -78,7 +126,7 @@ if (animalDetalle) {
       <AnimalDetalle
         animal={animalDetalle}
         animales={animales}
-        animalesNavegacion={filtrados}
+        animalesNavegacion={filtradosOrdenados}
         onBack={() => setAnimalDetalle(null)}
         onEdit={() => { setAnimalEditar(animalDetalle); setShowModal(true); }}
         onSelectAnimal={(animalSeleccionado) => setAnimalDetalle(animalSeleccionado)}
@@ -156,7 +204,7 @@ if (animalDetalle) {
       {/* Content */}
       {isLoading ? (
         <div className="flex items-center justify-center py-20 text-muted-foreground">Cargando animales...</div>
-      ) : filtrados.length === 0 ? (
+      ) : filtradosOrdenados.length === 0 ? (
         <div className="text-center py-16 bg-card rounded-xl border border-border">
           <p className="text-4xl mb-3">🐄</p>
           <p className="text-foreground font-semibold">No hay animales en este filtro</p>
@@ -171,18 +219,48 @@ if (animalDetalle) {
             <table className="w-full">
               <thead className="sticky top-0 z-10 bg-secondary/50">
                 <tr>
-                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">ID / Nombre</th>
+                  <th className={headerOrdenClass}>
+                    <button type="button" onClick={() => cambiarOrden("nombre")} className="flex items-center gap-1">
+                      ID / Nombre <span>{indicadorOrden("nombre")}</span>
+                    </button>
+                  </th>
+                  <th className={headerOrdenClass}>
+                    <button type="button" onClick={() => cambiarOrden("arete")} className="flex items-center gap-1">
+                      Arete <span>{indicadorOrden("arete")}</span>
+                    </button>
+                  </th>
+                  <th className={headerOrdenClass}>
+                    <button type="button" onClick={() => cambiarOrden("numero_id")} className="flex items-center gap-1">
+                      ID oficial <span>{indicadorOrden("numero_id")}</span>
+                    </button>
+                  </th>
                   <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Raza</th>
-                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Edad</th>
-                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Estado</th>
-                  <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Reproductivo</th>
+                  <th className={headerOrdenClass}>
+                    <button type="button" onClick={() => cambiarOrden("fecha_nacimiento")} className="flex items-center gap-1">
+                      Edad <span>{indicadorOrden("fecha_nacimiento")}</span>
+                    </button>
+                  </th>
+                  <th className={headerOrdenClass}>
+                    <button type="button" onClick={() => cambiarOrden("estado")} className="flex items-center gap-1">
+                      Estado <span>{indicadorOrden("estado")}</span>
+                    </button>
+                  </th>
+                  <th className={headerOrdenClass}>
+                    <button type="button" onClick={() => cambiarOrden("estado_reproductivo")} className="flex items-center gap-1">
+                      Reproductivo <span>{indicadorOrden("estado_reproductivo")}</span>
+                    </button>
+                  </th>
                   <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Grupo</th>
-                  <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">AM / PM</th>
+                  <th className="text-right text-xs font-semibold text-muted-foreground px-4 py-3">
+                    <button type="button" onClick={() => cambiarOrden("produccion")} className="ml-auto flex items-center gap-1 hover:text-foreground transition-colors">
+                      AM / PM <span>{indicadorOrden("produccion")}</span>
+                    </button>
+                  </th>
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filtrados.slice(0, 100).map(animal => {
+                {filtradosOrdenados.slice(0, 100).map(animal => {
                   const enRetiro = animal.retiro_leche_hasta && animal.retiro_leche_hasta >= hoy;
                   return (
                     <tr key={animal.id} className="hover:bg-secondary/30 transition-colors cursor-pointer" onClick={() => setAnimalDetalle(animal)}>
@@ -195,6 +273,8 @@ if (animalDetalle) {
                           </div>
                         </div>
                       </td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{animal.arete || '-'}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{animal.numero_id || '-'}</td>
                       <td className="px-4 py-3 text-sm text-foreground">{animal.raza || '-'}</td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">{calcularEdad(animal.fecha_nacimiento)}</td>
                       <td className="px-4 py-3"><EstadoBadge estado={animal.estado} /></td>
@@ -242,7 +322,7 @@ if (animalDetalle) {
 
           {/* Mobile Cards */}
           <div className="md:hidden space-y-2">
-            {filtrados.slice(0, 50).map(animal => {
+            {filtradosOrdenados.slice(0, 50).map(animal => {
               const enRetiro = animal.retiro_leche_hasta && animal.retiro_leche_hasta >= hoy;
               return (
                 <div key={animal.id} className={`bg-card rounded-xl border p-4 ${enRetiro ? 'border-red-200' : 'border-border'}`}
