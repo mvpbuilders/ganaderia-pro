@@ -165,9 +165,9 @@ if (animalDetalle) {
       ) : (
         <>
           {/* Desktop Table */}
-          <div className="hidden md:block bg-card rounded-xl border border-border overflow-hidden">
+          <div className="hidden md:block bg-card rounded-xl border border-border overflow-auto max-h-[70vh]">
             <table className="w-full">
-              <thead className="bg-secondary/50">
+              <thead className="sticky top-0 z-10 bg-secondary/50">
                 <tr>
                   <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">ID / Nombre</th>
                   <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3">Raza</th>
