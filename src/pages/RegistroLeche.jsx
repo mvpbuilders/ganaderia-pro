@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ANIMALS_QUERY_KEY, animalService } from "@/services/animalService";
 import { MILK_RECORDS_QUERY_KEY, milkRecordService } from "@/services/milkRecordService";
-import { ChevronLeft, ChevronRight, Save, Milk } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save, Milk, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -26,6 +26,8 @@ export default function RegistroLeche() {
   const [activeDate, setActiveDate] = useState(today);
   const [edits, setEdits] = useState({});
   const [saving, setSaving] = useState(false);
+  const [busqueda, setBusqueda] = useState("");
+  const [orden, setOrden] = useState({ campo: "nombre", direccion: "asc" });
 
   const dates = Array.from({ length: 5 }, (_, i) => addDays(windowStart, i));
 
@@ -117,6 +119,56 @@ export default function RegistroLeche() {
     }));
   };
 
+  const produccionDia = (animal, fecha) => {
+    const am = parseFloat(getVal(fecha, animal.id, "am")) || 0;
+    const pm = parseFloat(getVal(fecha, animal.id, "pm")) || 0;
+    return { am, pm, total: am + pm };
+  };
+
+  const vacasVisibles = vacasOrdenio
+    .filter(animal => {
+      const query = busqueda.trim().toLowerCase();
+      if (!query) return true;
+
+      return (
+        animal.nombre?.toLowerCase().includes(query) ||
+        animal.arete?.toLowerCase().includes(query) ||
+        animal.numero_id?.toLowerCase().includes(query)
+      );
+    })
+    .sort((a, b) => {
+      const prodA = produccionDia(a, activeDate);
+      const prodB = produccionDia(b, activeDate);
+      const valores = {
+        nombre: [a.nombre || "", b.nombre || ""],
+        arete: [a.arete || "", b.arete || ""],
+        am: [prodA.am, prodB.am],
+        pm: [prodA.pm, prodB.pm],
+        total: [prodA.total, prodB.total],
+      };
+      const [valueA, valueB] = valores[orden.campo] || valores.nombre;
+      const result = typeof valueA === "number" || typeof valueB === "number"
+        ? Number(valueA || 0) - Number(valueB || 0)
+        : String(valueA || "").localeCompare(String(valueB || ""), "es", {
+            numeric: true,
+            sensitivity: "base",
+          });
+
+      return orden.direccion === "asc" ? result : -result;
+    });
+
+  const cambiarOrden = (campo) => {
+    setOrden(prev => ({
+      campo,
+      direccion: prev.campo === campo && prev.direccion === "asc" ? "desc" : "asc",
+    }));
+  };
+
+  const indicadorOrden = (campo) => {
+    if (orden.campo !== campo) return "";
+    return orden.direccion === "asc" ? " ↑" : " ↓";
+  };
+
   const dayTotals = dates.map(fecha => {
     let am = 0, pm = 0;
     vacasOrdenio.forEach(a => {
@@ -155,11 +207,23 @@ export default function RegistroLeche() {
         </div>
       ) : (
         <div className="bg-card rounded-xl border border-border overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="border-b border-border p-3">
+            <div className="relative max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                value={busqueda}
+                onChange={e => setBusqueda(e.target.value)}
+                placeholder="Buscar por nombre, arete o ID..."
+                className="pl-9"
+              />
+            </div>
+          </div>
+
+          <div className="overflow-auto max-h-[70vh]">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border bg-secondary/50">
-                  <th className="text-left px-4 py-3 font-semibold text-foreground sticky left-0 bg-secondary/50 min-w-[140px]">
+                <tr className="border-b border-border bg-secondary/50 sticky top-0 z-30">
+                  <th className="text-left px-4 py-3 font-semibold text-foreground sticky left-0 z-40 bg-secondary/50 min-w-[140px]">
                     <div className="flex items-center gap-2">
                       <Button variant="outline" size="icon" onClick={() => setWindowStart(w => addDays(w, -1))}>
                         <ChevronLeft className="w-4 h-4" />
@@ -184,7 +248,7 @@ export default function RegistroLeche() {
                     </th>
                   ))}
 
-                  <th className="text-center px-3 py-3 font-semibold text-muted-foreground min-w-[80px]">
+                  <th className="text-center px-3 py-3 font-semibold text-muted-foreground min-w-[80px] bg-secondary/50">
                     <div className="flex items-center justify-center gap-2">
                       <Button variant="ghost" size="sm" onClick={() => setWindowStart(w => addDays(w, 5))}>
                         ››
@@ -196,19 +260,45 @@ export default function RegistroLeche() {
                   </th>
                 </tr>
 
-                <tr className="border-b border-border text-xs text-muted-foreground bg-secondary/20">
-                  <th className="sticky left-0 bg-secondary/20 px-4 py-1">Vaca</th>
+                <tr className="border-b border-border text-xs text-muted-foreground bg-secondary/20 sticky top-[57px] z-20">
+                  <th className="sticky left-0 z-30 bg-secondary/20 px-4 py-1">
+                    <button
+                      type="button"
+                      onClick={() => cambiarOrden(orden.campo === "nombre" ? "arete" : "nombre")}
+                      className="hover:text-foreground"
+                    >
+                      Vaca{orden.campo === "nombre" || orden.campo === "arete" ? indicadorOrden(orden.campo) : ""}
+                    </button>
+                  </th>
                   {dates.map(fecha => (
                     <>
-                      <th key={`${fecha}-am`} className={`text-center py-1 px-1 ${fecha === activeDate ? "bg-accent/50" : ""}`}>AM</th>
-                      <th key={`${fecha}-pm`} className={`text-center py-1 px-1 ${fecha === activeDate ? "bg-accent/50" : ""}`}>PM</th>
+                      <th key={`${fecha}-am`} className={`text-center py-1 px-1 ${fecha === activeDate ? "bg-accent/50" : ""}`}>
+                        <button type="button" onClick={() => cambiarOrden("am")} className="hover:text-foreground">
+                          AM{fecha === activeDate ? indicadorOrden("am") : ""}
+                        </button>
+                      </th>
+                      <th key={`${fecha}-pm`} className={`text-center py-1 px-1 ${fecha === activeDate ? "bg-accent/50" : ""}`}>
+                        <button type="button" onClick={() => cambiarOrden("pm")} className="hover:text-foreground">
+                          PM{fecha === activeDate ? indicadorOrden("pm") : ""}
+                        </button>
+                      </th>
                     </>
                   ))}
-                  <th className="text-center px-3 py-1">Prom.</th>
+                  <th className="text-center px-3 py-1 bg-secondary/20">
+                    <button type="button" onClick={() => cambiarOrden("total")} className="hover:text-foreground">
+                      Prom.{indicadorOrden("total")}
+                    </button>
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {vacasOrdenio.map((animal, idx) => {
+                {vacasVisibles.length === 0 ? (
+                  <tr>
+                    <td colSpan={dates.length * 2 + 2} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                      No hay vacas que coincidan con la búsqueda.
+                    </td>
+                  </tr>
+                ) : vacasVisibles.map((animal, idx) => {
                   let sumDays = 0, countDays = 0;
                   dates.forEach(fecha => {
                     const am = parseFloat(getVal(fecha, animal.id, "am")) || 0;
@@ -222,6 +312,7 @@ export default function RegistroLeche() {
                       <td className={`px-4 py-2 font-medium text-foreground sticky left-0 ${idx % 2 === 0 ? "bg-white" : "bg-secondary/10"}`}>
                         <div className="truncate max-w-[130px]">{animal.nombre}</div>
                         {animal.numero_id && <div className="text-xs text-muted-foreground">#{animal.numero_id}</div>}
+                        {animal.arete && <div className="text-xs text-muted-foreground">Arete {animal.arete}</div>}
                       </td>
                       {dates.map(fecha => {
                         const isActive = fecha === activeDate;
