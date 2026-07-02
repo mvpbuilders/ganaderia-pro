@@ -6,16 +6,18 @@ import { ANIMALS_QUERY_KEY, animalService } from "@/services/animalService";
 import { formatDate, calcularEdad } from "@/lib/utils";
 import EstadoBadge from "@/components/shared/EstadoBadge";
 import EventoRapidoModal from "@/components/ganado/EventoRapidoModal";
-import { ChevronLeft, Plus, Milk, Heart, Weight, Users, Calendar, AlertTriangle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Milk, Heart, Weight, Users, Calendar, AlertTriangle, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 const TABS = ["General", "Registro Lechero", "Reproducción", "Salud", "Agrupamiento", "Pedigrí", "Historial"];
 
-export default function AnimalDetalle({ animal, onBack, onEdit, onSelectAnimal }) {
+export default function AnimalDetalle({ animal, animales = [], animalesNavegacion = [], onBack, onEdit, onSelectAnimal }) {
 
   const [showEventoModal, setShowEventoModal] = useState(false);
   const [tab, setTab] = useState("General");
+  const [busquedaAnimal, setBusquedaAnimal] = useState("");
   const fincaId = animal?.finca_id;
 
   const { data: eventos = [], refetch: refetchEventos } = useQuery({
@@ -71,6 +73,30 @@ const hijos = animalesFinca.filter(a =>
   a.padre_id === animal.numero_id ||
   a.madre_id === animal.numero_id
 );
+const listaAnimales = animales.length > 0 ? animales : animalesFinca;
+const listaNavegacion = animalesNavegacion.length > 0 ? animalesNavegacion : listaAnimales;
+const indiceActual = listaNavegacion.findIndex(a => a.id === animal.id);
+const animalAnterior = indiceActual > 0 ? listaNavegacion[indiceActual - 1] : null;
+const animalSiguiente = indiceActual >= 0 && indiceActual < listaNavegacion.length - 1
+  ? listaNavegacion[indiceActual + 1]
+  : null;
+const sugerenciasAnimales = busquedaAnimal.trim()
+  ? listaAnimales
+      .filter(a => a.id !== animal.id)
+      .filter(a => {
+        const query = busquedaAnimal.trim().toLowerCase();
+        return (
+          a.nombre?.toLowerCase().includes(query) ||
+          a.arete?.toLowerCase().includes(query) ||
+          a.numero_id?.toLowerCase().includes(query)
+        );
+      })
+      .slice(0, 6)
+  : [];
+const seleccionarAnimal = (animalSeleccionado) => {
+  setBusquedaAnimal("");
+  onSelectAnimal?.(animalSeleccionado);
+};
 
   const hoy = new Date().toISOString().split('T')[0];
   const enRetiro = animal.retiro_leche_hasta && animal.retiro_leche_hasta >= hoy;
@@ -145,13 +171,31 @@ const hijos = animalesFinca.filter(a =>
   return (
     <div className="space-y-5 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-start gap-3">
         <button onClick={onBack} className="p-2 hover:bg-secondary rounded-lg text-muted-foreground hover:text-foreground">
           <ChevronLeft className="w-5 h-5" />
         </button>
         <div className="flex-1">
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              disabled={!animalAnterior}
+              onClick={() => animalAnterior && seleccionarAnimal(animalAnterior)}
+              className="p-1.5 hover:bg-secondary rounded-lg text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+              aria-label="Animal anterior"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
             <h1 className="text-2xl font-bold text-foreground">{animal.nombre}</h1>
+            <button
+              type="button"
+              disabled={!animalSiguiente}
+              onClick={() => animalSiguiente && seleccionarAnimal(animalSiguiente)}
+              className="p-1.5 hover:bg-secondary rounded-lg text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+              aria-label="Animal siguiente"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
             {animal.numero_id && <span className="text-sm text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">{animal.numero_id}</span>}
             <EstadoBadge estado={animal.estado} size="md" />
             {animal.estado === "Toro" ? (
@@ -169,6 +213,32 @@ const hijos = animalesFinca.filter(a =>
 )}
           </div>
           <p className="text-muted-foreground text-sm mt-0.5">{animal.raza} · {calcularEdad(animal.fecha_nacimiento)}</p>
+          <div className="relative mt-3 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              value={busquedaAnimal}
+              onChange={e => setBusquedaAnimal(e.target.value)}
+              placeholder="Buscar animal por nombre, arete o ID..."
+              className="pl-9"
+            />
+            {sugerenciasAnimales.length > 0 && (
+              <div className="absolute z-30 mt-1 w-full overflow-hidden rounded-lg border border-border bg-card shadow-lg">
+                {sugerenciasAnimales.map(sugerencia => (
+                  <button
+                    key={sugerencia.id}
+                    type="button"
+                    onClick={() => seleccionarAnimal(sugerencia)}
+                    className="w-full px-3 py-2 text-left hover:bg-secondary"
+                  >
+                    <p className="text-sm font-semibold text-foreground">{sugerencia.nombre}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {sugerencia.numero_id || "-"} · {sugerencia.arete || "Sin arete"}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         <div className="flex gap-2">
           {onEdit && <Button variant="outline" size="sm" onClick={onEdit}>Editar</Button>}

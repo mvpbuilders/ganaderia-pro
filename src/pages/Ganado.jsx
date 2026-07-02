@@ -77,6 +77,8 @@ if (animalDetalle) {
     <>
       <AnimalDetalle
         animal={animalDetalle}
+        animales={animales}
+        animalesNavegacion={filtrados}
         onBack={() => setAnimalDetalle(null)}
         onEdit={() => { setAnimalEditar(animalDetalle); setShowModal(true); }}
         onSelectAnimal={(animalSeleccionado) => setAnimalDetalle(animalSeleccionado)}
