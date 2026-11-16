@@ -1,5 +1,5 @@
 export const PLATFORM_ADMIN_EMAILS = [
-  "mllucanera@gmail.com",
+  "jdelhierro2192@gmail.com",
 ];
 
 export function isPlatformAdmin(user) {
